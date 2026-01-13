@@ -117,15 +117,9 @@ func Create(c *gin.Context) {
 		return
 	}
 
-	// Generate slug from title
-	slug := utils.GenerateSlug(req.Title)
-
-	// Check if slug already exists and make it unique
-	var count int64
-	config.DB.Model(&models.Post{}).Where("slug LIKE ?", slug+"%").Count(&count)
-	if count > 0 {
-		slug = slug + "-" + strconv.FormatInt(time.Now().Unix(), 10)
-	}
+	// Generate slug from title and ensure it's unique
+	baseSlug := utils.GenerateSlug(req.Title)
+	slug := utils.GenerateUniqueSlug(config.DB, "posts", baseSlug, "")
 
 	post := models.Post{
 		Title:      req.Title,
@@ -222,7 +216,8 @@ func Update(c *gin.Context) {
 	// Update fields if provided
 	if req.Title != "" {
 		post.Title = req.Title
-		post.Slug = utils.GenerateSlug(req.Title)
+		baseSlug := utils.GenerateSlug(req.Title)
+		post.Slug = utils.GenerateUniqueSlug(config.DB, "posts", baseSlug, post.ID)
 	}
 	if req.Content != "" {
 		post.Content = req.Content
@@ -257,11 +252,17 @@ func Update(c *gin.Context) {
 
 			if err := config.DB.Where("slug = ?", tagSlug).First(&tag).Error; err == gorm.ErrRecordNotFound {
 				tag = models.Tag{Name: tagName, Slug: tagSlug}
-				config.DB.Create(&tag)
+				if err := config.DB.Create(&tag).Error; err != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create tag"})
+					return
+				}
 			}
 			tags = append(tags, tag)
 		}
-		config.DB.Model(&post).Association("Tags").Replace(tags)
+		if err := config.DB.Model(&post).Association("Tags").Replace(tags); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update tags"})
+			return
+		}
 	}
 
 	// Load relationships
