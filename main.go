@@ -1,25 +1,31 @@
 package main
 
 import (
-	"fmt"
+	"go-simple-blog-v2/internal/configs"
+	"log"
+
+	"github.com/gin-gonic/gin"
 )
 
-//TIP To run your code, right-click the code and select <b>Run</b>. Alternatively, click
-// the <icon src="AllIcons.Actions.Execute"/> icon in the gutter and select the <b>Run</b> menu item from here.
-
 func main() {
-	//TIP Press <shortcut actionId="ShowIntentionActions"/> when your caret is at the underlined or highlighted text
-	// to see how GoLand suggests fixing it.
-	s := "gopher"
-	fmt.Println("Hello and welcome, %s!", s)
+	r := gin.Default()
 
-	for i := 1; i <= 5; i++ {
-		//TIP You can try debugging your code. We have set one <icon src="AllIcons.Debugger.Db_set_breakpoint"/> breakpoint
-		// for you, but you can always add more by pressing <shortcut actionId="ToggleLineBreakpoint"/>. To start your debugging session,
-		// right-click your code in the editor and select the <b>Debug</b> option.
-		fmt.Println("i =", 100/i)
+	var cfg *configs.Config
+
+	err := configs.Init(
+		configs.WithConfigFolder(
+			[]string{"./internal/configs/"},
+		),
+		configs.WithConfigFile("config"),
+		configs.WithConfigType("yaml"),
+	)
+	if err != nil {
+		log.Fatal("Gagal Inisiasi Config : ", err)
 	}
-}
 
-//TIP See GoLand help at <a href="https://www.jetbrains.com/help/go/">jetbrains.com/help/go/</a>.
-// Also, you can try interactive lessons for GoLand by selecting 'Help | Learn IDE Features' from the main menu.
+	cfg = configs.Get()
+	log.Println("config", cfg)
+
+	r.Run(cfg.Service.Port)
+
+}
