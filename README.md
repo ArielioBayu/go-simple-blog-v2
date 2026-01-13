@@ -94,16 +94,53 @@ CREATE DATABASE simple_blog_v2;
 5. Install dependencies:
 ```bash
 go mod download
+# or use make
+make install
 ```
 
 6. Run the application:
 ```bash
 go run main.go
+# or use make
+make run
 ```
 
 The server will start on `http://localhost:8080`
 
+### Using Docker
+
+The easiest way to run the application with all dependencies:
+
+```bash
+# Build and run with Docker Compose
+docker-compose up -d
+
+# View logs
+docker-compose logs -f app
+
+# Stop services
+docker-compose down
+```
+
+This will start:
+- MySQL database on port 3306
+- API server on port 8080
+
+### Using Makefile
+
+Available commands:
+```bash
+make help       # Show all available commands
+make build      # Build the application
+make run        # Run the application
+make test       # Run tests
+make clean      # Clean build artifacts
+make lint       # Run linters
+```
+
 ## 📚 API Endpoints
+
+For detailed API documentation, see [API.md](API.md)
 
 ### Health Check
 ```
