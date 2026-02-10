@@ -1,14 +1,16 @@
 package main
 
 import (
-	"go-simple-blog-v2/internal/configs"
-	"go-simple-blog-v2/internal/handlers/memberships"
-	"go-simple-blog-v2/pkg/internalsql"
 	"log"
+
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/configs"
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/handlers/memberships"
+	"github.com/ArielioBayu/go-simple-blog-v2/pkg/internalsql"
 
 	_ "github.com/go-sql-driver/mysql"
 
-	membershipsRepo "go-simple-blog-v2/internal/repository/memberships"
+	membershipsRepo "github.com/ArielioBayu/go-simple-blog-v2/internal/repository/memberships"
+	membershipsSrv "github.com/ArielioBayu/go-simple-blog-v2/internal/service/memberships"
 
 	"github.com/gin-gonic/gin"
 )
@@ -37,9 +39,10 @@ func main() {
 		log.Fatal("Gagal Inisiasi Database", err)
 	}
 
-	_ = membershipsRepo.NewRepository(db)
+	membershipsRepo := membershipsRepo.NewMembershipsRepository(db)
+	membershipsService := membershipsSrv.NewMembershipsService(membershipsRepo)
 
-	membershipsHandler := memberships.NewHandler(r)
+	membershipsHandler := memberships.NewHandler(r, membershipsService)
 	membershipsHandler.RegisterRoute()
 
 	r.Run(cfg.Service.Port)
