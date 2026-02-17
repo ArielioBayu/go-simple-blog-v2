@@ -6,7 +6,8 @@ type (
 		Database Database `mapstructure:"database"`
 	}
 	Service struct {
-		Port string `mapstructure:"port"`
+		SecretKey string `mapstructure:"secret_key"`
+		Port      string `mapstructure:"port"`
 	}
 
 	Database struct {

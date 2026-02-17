@@ -9,6 +9,7 @@ import (
 
 type MembershipRepository interface {
 	GetUser(ctx context.Context, email, username string) (*memberships.UserModel, error)
+	GetUserByEmail(ctx context.Context, email string) (*memberships.UserModel, error)
 	CreateUser(ctx context.Context, model memberships.UserModel) error
 }
 
@@ -43,6 +44,31 @@ func (r *repository) GetUser(ctx context.Context, email, username string) (*memb
 		return nil, err
 	}
 
+	return &response, nil
+}
+
+func (r *repository) GetUserByEmail(ctx context.Context, email string) (*memberships.UserModel, error) {
+	query := `SELECT id, email, password, created_at, updated_at, created_by, updated_by, username 
+				FROM users WHERE email = ?`
+	row := r.DB.QueryRowContext(ctx, query, email)
+
+	var response memberships.UserModel
+	err := row.Scan(
+		&response.ID,
+		&response.Email,
+		&response.Password,
+		&response.CreatedAt,
+		&response.UpdatedAt,
+		&response.CreatedBy,
+		&response.UpdatedBy,
+		&response.Username,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
 	return &response, nil
 }
 

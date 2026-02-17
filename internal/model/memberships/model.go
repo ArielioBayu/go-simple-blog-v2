@@ -8,6 +8,11 @@ type SignUpRequest struct {
 	Password string `json:"password"`
 }
 
+type SignInRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
 type UserModel struct {
 	ID        int64     `column:"id"`
 	Email     string    `column:"email"`
