@@ -1,8 +1,10 @@
 package memberships
 
 import (
+	"errors"
 	"net/http"
 
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/constants"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/model/memberships"
 	"github.com/gin-gonic/gin"
 )
@@ -22,7 +24,7 @@ func (h *Handler) GetUser(c *gin.Context) {
 	data, err := h.membershipsService.GetUser(ctx, request)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": err.Error(),
+			"error": err.Error(),
 		})
 		return
 	}
@@ -54,6 +56,13 @@ func (h *Handler) SignUp(c *gin.Context) {
 
 	err := h.membershipsService.SignUp(ctx, request)
 	if err != nil {
+		if errors.Is(err, constants.ErrUsernameOrEmailAlreadyExists) {
+			c.JSON(http.StatusConflict, gin.H{
+				"message": err.Error(),
+			})
+			return
+		}
+
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error": err.Error(),
 		})
@@ -61,7 +70,7 @@ func (h *Handler) SignUp(c *gin.Context) {
 	}
 
 	// jika sukses
-	c.JSON(http.StatusOK, gin.H{
+	c.JSON(http.StatusCreated, gin.H{
 		"Message": "Success Created Data",
 	})
 }

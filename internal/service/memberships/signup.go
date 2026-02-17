@@ -2,9 +2,9 @@ package memberships
 
 import (
 	"context"
-	"errors"
 	"time"
 
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/constants"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/model/memberships"
 	repo "github.com/ArielioBayu/go-simple-blog-v2/internal/repository/memberships"
 	"golang.org/x/crypto/bcrypt"
@@ -38,9 +38,8 @@ func (s *membershipsService) SignUp(ctx context.Context, request memberships.Sig
 		return err
 	}
 
-	//	Validasi jika data user ada di db
 	if user != nil {
-		return errors.New("Username or Email already exists")
+		return constants.ErrUsernameOrEmailAlreadyExists
 	}
 
 	//	Jika data user belum ada maka jalankan decrypt pwd
