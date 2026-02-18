@@ -6,5 +6,6 @@ var (
 	ErrUsernameOrEmailAlreadyExists = errors.New("Username or Email Already Exists!")
 	ErrDataNotFound                 = errors.New("Data Not Found")
 	ErrInvalidToken                 = errors.New("Invalid Token")
+	ErrMissingToken                 = errors.New("Missing Token")
 	ErrInvalidPassword              = errors.New("Invalid Password")
 )

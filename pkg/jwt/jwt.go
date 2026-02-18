@@ -26,7 +26,7 @@ func CreateToken(id int, username, secretKey string) (string, error) {
 
 func ValidateToken(tokenStr, secretKey string) (int, string, error) {
 	key := []byte(secretKey)
-	claims := jwt.MapClaims{} //sebagai wadah pad saat unmarshall tokennya seperti id, username.
+	claims := jwt.MapClaims{} //sebagai wadah pada saat unmarshall tokennya, seperti id, username.
 
 	token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (any, error) {
 		return key, nil
