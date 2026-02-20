@@ -3,7 +3,7 @@ package posts
 import "time"
 
 //	entity dari client
-type PostsRequest struct {
+type PostRequest struct {
 	PostTitle    string   `json:"post_title"`
 	PostContent  string   `json:"post_content"`
 	PostHashtags []string `json:"post_hashtags"`

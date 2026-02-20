@@ -9,6 +9,7 @@ import (
 
 type PostsRepository interface {
 	CreatePost(ctx context.Context, model posts.PostModel) error
+	CreateComment(ctx context.Context, model posts.CommentModel) error
 }
 
 type postsRepository struct {

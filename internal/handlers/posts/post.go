@@ -8,7 +8,7 @@ import (
 )
 
 func (h *Handler) CreatePost(c *gin.Context) {
-	var request posts.PostsRequest
+	var request posts.PostRequest
 	err := c.ShouldBindJSON(&request)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{

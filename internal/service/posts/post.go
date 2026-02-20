@@ -13,7 +13,8 @@ import (
 )
 
 type PostsService interface {
-	CreatePost(ctx context.Context, userId int, request posts.PostsRequest) error
+	CreatePost(ctx context.Context, userId int, request posts.PostRequest) error
+	CreateComment(ctx context.Context, postId, userId int, request posts.CommentRequest) error
 }
 
 type postsService struct {
@@ -28,7 +29,7 @@ func NewPostsService(cfg *configs.Config, postRepo repo.PostsRepository) PostsSe
 	}
 }
 
-func (s *postsService) CreatePost(ctx context.Context, userId int, request posts.PostsRequest) error {
+func (s *postsService) CreatePost(ctx context.Context, userId int, request posts.PostRequest) error {
 	poshHashtags := strings.Join(request.PostHashtags, ",")
 
 	time := time.Now()
