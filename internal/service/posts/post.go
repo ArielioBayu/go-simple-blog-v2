@@ -15,6 +15,7 @@ import (
 type PostsService interface {
 	CreatePost(ctx context.Context, userId int, request posts.PostRequest) error
 	CreateComment(ctx context.Context, postId, userId int, request posts.CommentRequest) error
+	InsertUpdateActivities(ctx context.Context, postId, userId int, request posts.ActivityRequest) error
 }
 
 type postsService struct {

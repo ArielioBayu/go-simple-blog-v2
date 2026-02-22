@@ -24,4 +24,5 @@ func (h *Handler) RegisterRoute() {
 
 	routes.POST("/create-post", h.CreatePost)
 	routes.POST("/create-comment/:postId", h.CreateComment)
+	routes.POST("/user-activity/:postId", h.InsertUpdateActivities)
 }
