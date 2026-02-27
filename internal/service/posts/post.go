@@ -2,6 +2,7 @@ package posts
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"strconv"
 	"strings"
@@ -15,6 +16,7 @@ import (
 type PostsService interface {
 	CreatePost(ctx context.Context, userId int, request posts.PostRequest) error
 	CreateComment(ctx context.Context, postId, userId int, request posts.CommentRequest) error
+	GetAllPost(ctx context.Context, pageSize, pageIndex int) (posts.GetAllPostResponse, error)
 	InsertUpdateActivities(ctx context.Context, postId, userId int, request posts.ActivityRequest) error
 }
 
@@ -52,4 +54,16 @@ func (s *postsService) CreatePost(ctx context.Context, userId int, request posts
 	}
 
 	return nil
+}
+
+func (s *postsService) GetAllPost(ctx context.Context, pageSize, pageIndex int) (posts.GetAllPostResponse, error) {
+	limit := pageSize
+	offset := pageSize * (pageIndex - 1)
+
+	response, err := s.postsRepo.GetAllPost(ctx, limit, offset)
+	if err != nil {
+		return response, fmt.Errorf("Service GetAllPost: %w", err)
+	}
+
+	return response, nil
 }

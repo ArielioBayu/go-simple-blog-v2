@@ -1,6 +1,7 @@
 package posts
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 
@@ -40,6 +41,7 @@ func (h *Handler) InsertUpdateActivities(c *gin.Context) {
 
 	err = h.srv.InsertUpdateActivities(ctx, postId, userId.(int), request)
 	if err != nil {
+		log.Printf("InsertUpdateActivities failed | error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "Internal server error",
 		})

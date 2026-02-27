@@ -18,7 +18,6 @@ func (r *postsRepository) GetActivities(ctx context.Context, postId, userId int)
 		&data.ID,
 		&data.PostId,
 		&data.UserId,
-		&data.IsLiked,
 		&data.CreatedAt,
 		&data.UpdatedAt,
 		&data.CreatedBy,
@@ -28,7 +27,7 @@ func (r *postsRepository) GetActivities(ctx context.Context, postId, userId int)
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("GetActivities: %w", err)
+		return nil, fmt.Errorf("Repository GetActivities: %w", err)
 	}
 	return &data, nil
 }
@@ -39,7 +38,7 @@ func (r *postsRepository) CreateActivities(ctx context.Context, model posts.Acti
 	_, err := r.DB.ExecContext(ctx, query, model.PostId, model.UserId, model.IsLiked, model.CreatedAt, model.UpdatedAt,
 		model.CreatedBy, model.UpdatedBy)
 	if err != nil {
-		return fmt.Errorf("CreateActivities: %w", err)
+		return fmt.Errorf("Repository CreateActivities: %w", err)
 	}
 	return nil
 }
@@ -48,7 +47,7 @@ func (r *postsRepository) UpdateActivities(ctx context.Context, model posts.Acti
 	query := `UPDATE activities SET is_liked = ?, updated_at = ?, updated_by = ? WHERE post_id = ? AND user_id = ?`
 	_, err := r.DB.ExecContext(ctx, query, model.IsLiked, model.UpdatedAt, model.UpdatedBy, model.PostId, model.UserId)
 	if err != nil {
-		return fmt.Errorf("UpdateActivity: %w", err)
+		return fmt.Errorf("Repository UpdateActivity: %w", err)
 	}
 	return nil
 }
