@@ -72,7 +72,7 @@ func (h *Handler) GetAllPost(c *gin.Context) {
 
 func (h *Handler) GetPostById(c *gin.Context) {
 	ctx := c.Request.Context()
-	postId := c.Query("postId")
+	postId := c.Param("postId")
 
 	postIdInt, err := strconv.Atoi(postId)
 	if err != nil {

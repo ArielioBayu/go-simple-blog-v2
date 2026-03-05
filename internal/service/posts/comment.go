@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/model/posts"
+	"github.com/ArielioBayu/go-simple-blog-v2/pkg/utils"
 )
 
 func (s *postsService) CreateComment(ctx context.Context, postId, userId int, request posts.CommentRequest) error {
@@ -15,8 +16,8 @@ func (s *postsService) CreateComment(ctx context.Context, postId, userId int, re
 		PostId:         postId,
 		UserId:         userId,
 		CommentContent: request.CommentContent,
-		CreatedAt:      time,
-		UpdatedAt:      time,
+		CreatedAt:      utils.JsonTime(time),
+		UpdatedAt:      utils.JsonTime(time),
 		CreatedBy:      strconv.Itoa(userId),
 		UpdatedBy:      strconv.Itoa(userId),
 	}

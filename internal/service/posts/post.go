@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/model/posts"
+	"github.com/ArielioBayu/go-simple-blog-v2/pkg/utils"
 )
 
 func (s *postsService) CreatePost(ctx context.Context, userId int, request posts.PostRequest) error {
@@ -20,8 +21,8 @@ func (s *postsService) CreatePost(ctx context.Context, userId int, request posts
 		PostTitle:    request.PostTitle,
 		PostContent:  request.PostContent,
 		PostHashtags: poshHashtags,
-		CreatedAt:    time,
-		UpdatedAt:    time,
+		CreatedAt:    utils.JsonTime(time),
+		UpdatedAt:    utils.JsonTime(time),
 		CreatedBy:    strconv.Itoa(userId),
 		UpdatedBy:    strconv.Itoa(userId),
 	}
