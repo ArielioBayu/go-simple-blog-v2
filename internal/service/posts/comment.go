@@ -2,7 +2,7 @@ package posts
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -23,8 +23,7 @@ func (s *postsService) CreateComment(ctx context.Context, postId, userId int, re
 
 	err := s.postsRepo.CreateComment(ctx, model)
 	if err != nil {
-		log.Println("error :", err)
-		return err
+		return fmt.Errorf("Service CreateComment: %w", err)
 	}
 
 	return nil

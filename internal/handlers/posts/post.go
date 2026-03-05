@@ -1,10 +1,12 @@
 package posts
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
 
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/constants"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/model/posts"
 	"github.com/gin-gonic/gin"
 )
@@ -65,5 +67,38 @@ func (h *Handler) GetAllPost(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": response,
+	})
+}
+
+func (h *Handler) GetPostById(c *gin.Context) {
+	ctx := c.Request.Context()
+	postId := c.Query("postId")
+
+	postIdInt, err := strconv.Atoi(postId)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "invalid post id",
+		})
+		return
+	}
+
+	data, err := h.srv.GetPostById(ctx, postIdInt)
+	if err != nil {
+		if errors.Is(err, constants.ErrPostNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"message": "Post Not Found",
+			})
+			return
+		}
+
+		log.Printf("GetPostById Failed | error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "internal server error",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": data,
 	})
 }

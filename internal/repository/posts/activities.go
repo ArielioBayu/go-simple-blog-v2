@@ -8,6 +8,19 @@ import (
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/model/posts"
 )
 
+func (r *postsRepository) CountLikedByPostID(ctx context.Context, postId int) (int, error) {
+	query := `SELECT COUNT(id) FROM activities WHERE post_id = ? AND is_liked = true`
+	row := r.DB.QueryRowContext(ctx, query, postId)
+
+	var response int
+	err := row.Scan(&response)
+	if err != nil {
+		return response, fmt.Errorf("Repository CountLikedByPostID: %w", err)
+	}
+
+	return response, nil
+}
+
 func (r *postsRepository) GetActivities(ctx context.Context, postId, userId int) (*posts.ActivityModel, error) {
 	query := `SELECT id, post_id, user_id, is_liked, created_at, updated_at, created_by, updated_by FROM activities
 				WHERE post_id = ? and user_id = ?`
@@ -18,6 +31,7 @@ func (r *postsRepository) GetActivities(ctx context.Context, postId, userId int)
 		&data.ID,
 		&data.PostId,
 		&data.UserId,
+		&data.IsLiked,
 		&data.CreatedAt,
 		&data.UpdatedAt,
 		&data.CreatedBy,

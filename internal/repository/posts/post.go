@@ -3,30 +3,13 @@ package posts
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/constants"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/model/posts"
 )
-
-type PostsRepository interface {
-	CreatePost(ctx context.Context, model posts.PostModel) error
-	CreateComment(ctx context.Context, model posts.CommentModel) error
-	CreateActivities(ctx context.Context, model posts.ActivityModel) error
-	GetActivities(ctx context.Context, postId, userId int) (*posts.ActivityModel, error)
-	GetAllPost(ctx context.Context, limit, offset int) (posts.GetAllPostResponse, error)
-	UpdateActivities(ctx context.Context, model posts.ActivityModel) error
-}
-
-type postsRepository struct {
-	DB *sql.DB
-}
-
-func NewPostsRepository(db *sql.DB) *postsRepository {
-	return &postsRepository{
-		DB: db,
-	}
-}
 
 func (r *postsRepository) CreatePost(ctx context.Context, model posts.PostModel) error {
 	query := `INSERT INTO posts (user_id, post_title, post_content, post_hashtags, created_at, updated_at,
@@ -88,4 +71,50 @@ func (r *postsRepository) GetAllPost(ctx context.Context, limit, offset int) (po
 	}
 
 	return response, nil
+}
+
+func (r *postsRepository) GetPostById(ctx context.Context, id int) (*posts.Data, error) {
+	query := `SELECT p.id, p.user_id, u.username, p.post_title, p.post_content, p.post_hashtags, act.is_liked, p.created_at, p.updated_at 
+				FROM posts as p
+				JOIN users as u ON p.user_id = u.id
+				JOIN activities as act ON p.id = act.post_id 
+				WHERE p.id = ?`
+
+	row := r.DB.QueryRowContext(ctx, query, id)
+	var (
+		model    posts.PostModel
+		username string
+		isliked  bool
+	)
+	err := row.Scan(
+		&model.ID,
+		&model.UserId,
+		&username,
+		&model.PostTitle,
+		&model.PostContent,
+		&model.PostHashtags,
+		&isliked,
+		&model.CreatedAt,
+		&model.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, constants.ErrPostNotFound
+		}
+		return nil, fmt.Errorf("Repository GetPostById: %w", err)
+	}
+
+	data := posts.Data{
+		ID:           model.ID,
+		UserId:       model.UserId,
+		Username:     username,
+		PostTitle:    model.PostTitle,
+		PostContent:  model.PostContent,
+		PostHashtags: strings.Split(model.PostHashtags, ","),
+		IsLiked:      isliked,
+		CreatedAt:    model.CreatedAt,
+		UpdatedAt:    model.UpdatedAt,
+	}
+
+	return &data, nil
 }

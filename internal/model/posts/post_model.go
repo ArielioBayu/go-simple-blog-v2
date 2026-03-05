@@ -29,20 +29,34 @@ type (
 	}
 
 	Data struct {
-		ID           int       `json:"id"`
-		UserId       int       `json:"user_id"`
-		Username     string    `json:"username"`
-		PostTitle    string    `json:"post_title"`
-		PostContent  string    `json:"post_content"`
-		PostHashtags []string  `json:"post_hashtags"`
-		CreatedAt    time.Time `json:"created_at"`
-		UpdatedAt    time.Time `json:"updated_at"`
-		CreatedBy    string    `json:"created_by"`
-		UpdatedBy    string    `json:"updated_by"`
+		ID           int       `json:"id" column:"id"`
+		UserId       int       `json:"user_id" column:"user_id"`
+		Username     string    `json:"username" column:"username"`
+		PostTitle    string    `json:"post_title" column:"post_title"`
+		PostContent  string    `json:"post_content" column:"post_content"`
+		PostHashtags []string  `json:"post_hashtags" column:"post_hashtags"`
+		IsLiked      bool      `json:"is_liked" column:"is_liked"`
+		CreatedAt    time.Time `json:"created_at" column:"created_at"`
+		UpdatedAt    time.Time `json:"updated_at" column:"updated_at"`
 	}
 
 	Pagination struct {
 		Limit  int `json:"limit"`
 		Offset int `json:"offset"`
+	}
+)
+
+type (
+	GetPostResponse struct {
+		DetailPost Data         `json:"detail_post"`
+		LikedCount int          `json:"liked_count"`
+		Comments   []GetComment `json:"comments"`
+	}
+
+	GetComment struct {
+		ID             int    `json:"id"`
+		UserId         int    `json:"user_id"`
+		Username       string `json:"username"`
+		CommentContent string `json:"comment_content"`
 	}
 )

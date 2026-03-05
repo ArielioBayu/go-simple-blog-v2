@@ -8,29 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ArielioBayu/go-simple-blog-v2/internal/configs"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/model/posts"
-	repo "github.com/ArielioBayu/go-simple-blog-v2/internal/repository/posts"
 )
-
-type PostsService interface {
-	CreatePost(ctx context.Context, userId int, request posts.PostRequest) error
-	CreateComment(ctx context.Context, postId, userId int, request posts.CommentRequest) error
-	GetAllPost(ctx context.Context, pageSize, pageIndex int) (posts.GetAllPostResponse, error)
-	InsertUpdateActivities(ctx context.Context, postId, userId int, request posts.ActivityRequest) error
-}
-
-type postsService struct {
-	cfg       *configs.Config
-	postsRepo repo.PostsRepository
-}
-
-func NewPostsService(cfg *configs.Config, postRepo repo.PostsRepository) PostsService {
-	return &postsService{
-		cfg:       cfg,
-		postsRepo: postRepo,
-	}
-}
 
 func (s *postsService) CreatePost(ctx context.Context, userId int, request posts.PostRequest) error {
 	poshHashtags := strings.Join(request.PostHashtags, ",")
@@ -66,4 +45,41 @@ func (s *postsService) GetAllPost(ctx context.Context, pageSize, pageIndex int) 
 	}
 
 	return response, nil
+}
+
+func (s *postsService) GetPostById(ctx context.Context, id int) (*posts.GetPostResponse, error) {
+	data, err := s.postsRepo.GetPostById(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("Service GetPostById: %w", err)
+	}
+
+	counts, err := s.postsRepo.CountLikedByPostID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("Service CountLikedByPostID: %w", err)
+	}
+
+	comments, err := s.postsRepo.GetCommentById(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("Service GetCommentById: %w", err)
+	}
+
+	result := &posts.GetPostResponse{
+		DetailPost: posts.Data{
+			ID:           data.ID,
+			UserId:       data.UserId,
+			Username:     data.Username,
+			PostTitle:    data.PostTitle,
+			PostContent:  data.PostContent,
+			PostHashtags: data.PostHashtags,
+			IsLiked:      data.IsLiked,
+			CreatedAt:    data.CreatedAt,
+			UpdatedAt:    data.UpdatedAt,
+			// CreatedBy:    data.UpdatedBy,
+			// UpdatedBy:    data.UpdatedBy,
+		},
+		LikedCount: counts,
+		Comments:   comments,
+	}
+
+	return result, nil
 }
