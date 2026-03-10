@@ -2,6 +2,7 @@ package memberships
 
 import (
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/constants"
@@ -21,7 +22,7 @@ func (h *Handler) SignIn(c *gin.Context) {
 		return
 	}
 
-	token, err := h.membershipsService.SignIn(ctx, request)
+	token, refreshToken, err := h.membershipsService.SignIn(ctx, request)
 	if err != nil {
 		if errors.Is(err, constants.ErrDataNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{
@@ -36,15 +37,17 @@ func (h *Handler) SignIn(c *gin.Context) {
 			return
 		}
 
+		log.Printf("handler sign in failed | error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": err.Error(),
+			"message": "internal server error",
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"message":      "Success Login",
-		"access_token": token,
+		"message":       "Success Login",
+		"access_token":  token,
+		"refresh_token": refreshToken,
 	})
 }
 
@@ -77,6 +80,6 @@ func (h *Handler) SignUp(c *gin.Context) {
 
 	// jika sukses
 	c.JSON(http.StatusCreated, gin.H{
-		"Message": "Success Created Data",
+		"Message": "success created data",
 	})
 }

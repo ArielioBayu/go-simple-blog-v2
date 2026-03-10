@@ -1,6 +1,7 @@
 package memberships
 
 import (
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/middleware"
 	service "github.com/ArielioBayu/go-simple-blog-v2/internal/service/memberships"
 	"github.com/gin-gonic/gin"
 )
@@ -22,4 +23,8 @@ func (h *Handler) RegisterRoute() {
 	routes.POST("/sign-up", h.SignUp)
 	routes.POST("/sign-in", h.SignIn)
 	routes.GET("/get-user", h.GetUser)
+
+	routesRefresh := h.Group("/memberships")
+	routes.Use(middleware.AuthRefreshMiddleware())
+	routesRefresh.POST("/refresh", h.Refresh)
 }

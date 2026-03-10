@@ -3,23 +3,10 @@ package memberships
 import (
 	"context"
 	"database/sql"
+	"fmt"
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/model/memberships"
 )
-
-type MembershipRepository interface {
-	GetUser(ctx context.Context, email, username string) (*memberships.UserModel, error)
-	GetUserByEmail(ctx context.Context, email string) (*memberships.UserModel, error)
-	CreateUser(ctx context.Context, model memberships.UserModel) error
-}
-
-type repository struct {
-	DB *sql.DB
-}
-
-func NewMembershipsRepository(db *sql.DB) MembershipRepository {
-	return &repository{db}
-}
 
 func (r *repository) GetUser(ctx context.Context, email, username string) (*memberships.UserModel, error) {
 	query := `SELECT id, email, username, created_at, updated_at, created_by, updated_by FROM users 
@@ -41,7 +28,32 @@ func (r *repository) GetUser(ctx context.Context, email, username string) (*memb
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("repository get user: %w", err)
+	}
+
+	return &response, nil
+}
+
+func (r *repository) GetUserById(ctx context.Context, id int) (*memberships.UserModel, error) {
+	query := `SELECT id, email, username, created_at, updated_at, created_by, updated_by FROM users
+				WHERE id = ?`
+	row := r.DB.QueryRowContext(ctx, query, id)
+
+	var response memberships.UserModel
+	err := row.Scan(
+		response.ID,
+		response.Email,
+		response.Username,
+		response.CreatedAt,
+		response.UpdatedAt,
+		response.CreatedBy,
+		response.UpdatedBy,
+	)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("repository get user by id: %w", err)
 	}
 
 	return &response, nil
@@ -67,7 +79,7 @@ func (r *repository) GetUserByEmail(ctx context.Context, email string) (*members
 		if err == sql.ErrNoRows {
 			return nil, nil
 		}
-		return nil, err
+		return nil, fmt.Errorf("repository get user by email: %w", err)
 	}
 	return &response, nil
 }
@@ -78,7 +90,7 @@ func (r *repository) CreateUser(ctx context.Context, model memberships.UserModel
 	_, err := r.DB.ExecContext(ctx, query, model.ID, model.Email, model.Password, model.Username, model.CreatedAt, model.UpdatedAt,
 		model.CreatedBy, model.UpdatedBy)
 	if err != nil {
-		return err
+		return fmt.Errorf("repository create user: %w", err)
 	}
 
 	return nil

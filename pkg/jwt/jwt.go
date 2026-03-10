@@ -45,3 +45,24 @@ func ValidateToken(tokenStr, secretKey string) (int, string, error) {
 
 	return id, username, nil
 }
+
+func ValidateTokenWithoutExpiry(tokenStr, secretKey string) (int, string, error) {
+	key := []byte(secretKey)
+	claims := jwt.MapClaims{}
+	token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (any, error) {
+		return key, nil
+	}, jwt.WithoutClaimsValidation())
+
+	if err != nil {
+		return 0, "", err
+	}
+
+	if !token.Valid {
+		return 0, "", constants.ErrInvalidToken
+	}
+
+	var id = claims["id"].(int)
+	var username = claims["username"].(string)
+
+	return id, username, nil
+}

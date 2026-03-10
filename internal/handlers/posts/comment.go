@@ -31,25 +31,21 @@ func (h *Handler) CreateComment(c *gin.Context) {
 	}
 
 	//	GetUserId dari middleware menggunakan context
-	userId, exists := c.Get("id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"message": "Unauthorized",
-		})
-		return
-	}
+	userId := c.GetInt("id")
 
-	err = h.srv.CreateComment(c, postId, userId.(int), request)
+	err = h.srv.CreateComment(c, postId, userId, request)
 	if err != nil {
 		switch {
 		case errors.Is(err, constants.ErrPostNotFound):
 			c.JSON(http.StatusNotFound, gin.H{
 				"message": err.Error(),
 			})
+
 		case errors.Is(err, constants.ErrUnauthorized):
 			c.JSON(http.StatusUnauthorized, gin.H{
 				"message": err.Error(),
 			})
+
 		default:
 			//	Log agar detail error internal server tidak sampai ke client
 			log.Printf("Create comment error :%v", err)

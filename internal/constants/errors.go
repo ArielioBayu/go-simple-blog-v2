@@ -14,6 +14,7 @@ var (
 	ErrPostNotFound = errors.New("Error Post Not Found")
 
 	//	Invalid Token
-	ErrInvalidToken    = errors.New("Invalid Token")
-	ErrInvalidPassword = errors.New("Invalid Password")
+	ErrInvalidToken    = errors.New("invalid token")
+	ErrInvalidPassword = errors.New("invalid password")
+	ErrTokenExpired    = errors.New("refresh token has expired")
 )
