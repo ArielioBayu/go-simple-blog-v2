@@ -7,6 +7,7 @@ import (
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/constants"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/model/memberships"
+	"github.com/ArielioBayu/go-simple-blog-v2/pkg/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -43,6 +44,8 @@ func (h *Handler) SignIn(c *gin.Context) {
 		})
 		return
 	}
+
+	utils.SetAccessTokenCookie(c, token)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":       "Success Login",

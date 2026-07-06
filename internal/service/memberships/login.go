@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/constants"
@@ -110,8 +109,6 @@ func (s *membershipsService) SignIn(ctx context.Context, request memberships.Sig
 	if err != nil {
 		return "", "", fmt.Errorf("service insert refresh token: %w", err)
 	}
-
-	log.Println("refresh token: ", refreshToken)
 
 	return token, refreshToken, nil
 }

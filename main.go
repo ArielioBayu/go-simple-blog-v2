@@ -6,6 +6,7 @@ import (
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/configs"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/handlers/memberships"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/handlers/posts"
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/middleware"
 
 	"github.com/ArielioBayu/go-simple-blog-v2/pkg/internalsql"
 
@@ -42,6 +43,7 @@ func main() {
 		log.Fatal("Gagal Inisiasi Database", err)
 	}
 
+	r.Use(middleware.CorsMiddleware())
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
 

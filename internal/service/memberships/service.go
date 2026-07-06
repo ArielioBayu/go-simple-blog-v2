@@ -10,6 +10,7 @@ import (
 
 type MembershipsService interface {
 	GetUser(ctx context.Context, request memberships.SignUpRequest) (*memberships.UserModel, error)
+	GetIdRefreshToken(ctx context.Context, request memberships.RefreshTokenRequest) (*memberships.RefreshTokenModel, error)
 	SignUp(ctx context.Context, request memberships.SignUpRequest) error
 	SignIn(ctx context.Context, request memberships.SignInRequest) (string, string, error)
 	ValidateRefreshToken(ctx context.Context, userId int, request memberships.RefreshTokenRequest) (string, error)

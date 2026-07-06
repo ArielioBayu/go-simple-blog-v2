@@ -13,6 +13,7 @@ type MembershipRepository interface {
 	GetUserById(ctx context.Context, id int) (*memberships.UserModel, error)
 	GetUserByEmail(ctx context.Context, email string) (*memberships.UserModel, error)
 	GetRefreshToken(ctx context.Context, userId int, now time.Time) (*memberships.RefreshTokenModel, error)
+	GetIdRefreshToken(ctx context.Context, request memberships.RefreshTokenRequest) (*memberships.RefreshTokenModel, error)
 	CreateUser(ctx context.Context, model memberships.UserModel) error
 	InsertRefreshToken(ctx context.Context, model memberships.RefreshTokenModel) error
 }

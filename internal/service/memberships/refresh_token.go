@@ -10,6 +10,15 @@ import (
 	"github.com/ArielioBayu/go-simple-blog-v2/pkg/jwt"
 )
 
+func (s *membershipsService) GetIdRefreshToken(ctx context.Context, request memberships.RefreshTokenRequest) (*memberships.RefreshTokenModel, error) {
+	idRefreshToken, err := s.membershipsRepo.GetIdRefreshToken(ctx, request)
+	if err != nil {
+		return nil, fmt.Errorf("service GetIdRefreshToken: %w", err)
+	}
+
+	return idRefreshToken, nil
+}
+
 func (s *membershipsService) ValidateRefreshToken(ctx context.Context, userId int, request memberships.RefreshTokenRequest) (string, error) {
 	now := time.Now()
 
@@ -19,7 +28,7 @@ func (s *membershipsService) ValidateRefreshToken(ctx context.Context, userId in
 	}
 
 	if existRefreshToken == nil {
-		return "", errors.New("refresh token has expired")
+		return "", errors.New("refresh token not found")
 	}
 
 	//	cek kalo refresh token di db tidak sesuai sama token yang dimasukkan di client

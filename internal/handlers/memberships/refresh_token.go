@@ -22,10 +22,14 @@ func (h *Handler) Refresh(c *gin.Context) {
 		return
 	}
 
-	// get userId dari middleware menggunakan context
-	userId := c.GetInt("id")
+	refreshToken, err := h.membershipsService.GetIdRefreshToken(ctx, request)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"message": "internal server error",
+		})
+	}
 
-	token, err := h.membershipsService.ValidateRefreshToken(ctx, userId, request)
+	token, err := h.membershipsService.ValidateRefreshToken(ctx, refreshToken.UserId, request)
 	if err != nil {
 		switch {
 		case errors.Is(err, constants.ErrTokenExpired):
@@ -39,7 +43,7 @@ func (h *Handler) Refresh(c *gin.Context) {
 			})
 
 		default:
-			log.Printf("refresh token failed | error: %v", err)
+			log.Printf("handler refresh failed | error: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{
 				"message": "internal server error",
 			})

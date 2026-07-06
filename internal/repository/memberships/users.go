@@ -41,13 +41,13 @@ func (r *repository) GetUserById(ctx context.Context, id int) (*memberships.User
 
 	var response memberships.UserModel
 	err := row.Scan(
-		response.ID,
-		response.Email,
-		response.Username,
-		response.CreatedAt,
-		response.UpdatedAt,
-		response.CreatedBy,
-		response.UpdatedBy,
+		&response.ID,
+		&response.Email,
+		&response.Username,
+		&response.CreatedAt,
+		&response.UpdatedAt,
+		&response.CreatedBy,
+		&response.UpdatedBy,
 	)
 	if err != nil {
 		if err == sql.ErrNoRows {

@@ -1,7 +1,10 @@
 package utils
 
 import (
+	"net/http"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 type JsonTime time.Time
@@ -20,4 +23,24 @@ func (t *JsonTime) UnmarshalJSON(data []byte) error {
 	}
 	*t = JsonTime(parsed)
 	return nil
+}
+
+func SetAccessTokenCookie(c *gin.Context, token string) {
+	SetCookie(c, "access_token", token, 1*time.Minute)
+}
+
+func SetCookie(c *gin.Context, name, token string, maxExpired time.Duration) {
+	cookie := &http.Cookie{
+		Name:     name,
+		Value:    token,
+		Path:     "/",
+		MaxAge:   int(maxExpired.Seconds()),
+		HttpOnly: false,
+	}
+
+	http.SetCookie(c.Writer, cookie)
+}
+
+func GetCookie() {
+
 }

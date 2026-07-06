@@ -31,22 +31,20 @@ func AuthMiddleware() gin.HandlerFunc {
 	}
 }
 
-func AuthRefreshMiddleware() gin.HandlerFunc {
+func AuthMiddlewareToken() gin.HandlerFunc {
 	secretKey := configs.Get().Service.SecretKey
 	return func(ctx *gin.Context) {
-		header := ctx.Request.Header.Get("Authorization")
-		header = strings.TrimSpace(header)
-		if header == "" {
+		accessToken, err := ctx.Cookie("access_token")
+		if err != nil || strings.TrimSpace(accessToken) == "" {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, constants.ErrMissingToken)
 			return
 		}
 
-		id, username, err := jwt.ValidateTokenWithoutExpiry(header, secretKey)
+		id, username, err := jwt.ValidateToken(accessToken, secretKey)
 		if err != nil {
 			ctx.AbortWithStatusJSON(http.StatusUnauthorized, constants.ErrInvalidToken)
 			return
 		}
-
 		ctx.Set("id", id)
 		ctx.Set("username", username)
 		ctx.Next()

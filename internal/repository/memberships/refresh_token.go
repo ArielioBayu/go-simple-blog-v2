@@ -44,3 +44,20 @@ func (r *repository) GetRefreshToken(ctx context.Context, userId int, now time.T
 
 	return &model, nil
 }
+
+func (r *repository) GetIdRefreshToken(ctx context.Context, request memberships.RefreshTokenRequest) (*memberships.RefreshTokenModel, error) {
+	query := `SELECT id, user_id, expired_at FROM refresh_tokens WHERE refresh_token = ?`
+	row := r.DB.QueryRowContext(ctx, query, request.Token)
+
+	var model memberships.RefreshTokenModel
+	err := row.Scan(
+		&model.ID,
+		&model.UserId,
+		&model.ExpiredAt,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("repository get id refresh token: %w", err)
+	}
+
+	return &model, nil
+}
