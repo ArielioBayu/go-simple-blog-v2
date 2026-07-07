@@ -1,166 +1,166 @@
 # Go Simple Blog V2
 
-Go Simple Blog V2 adalah project RESTful API untuk platform blog sederhana yang dibangun menggunakan bahasa pemrograman **Go** dengan framework **Gin Gonic**. Project ini merupakan versi peningkatan dari versi pertamanya, dengan penataan kode yang lebih bersih mengikuti prinsip **Clean Architecture (Layered Architecture)** dan sistem autentikasi yang lebih aman menggunakan **JWT (JSON Web Token)**.
+Go Simple Blog V2 is a RESTful API for a simple blog platform built with the **Go** programming language and the **Gin Gonic** web framework. This project is an enhanced version of the first release, featuring a cleaner codebase that adheres to the **Clean Architecture (Layered Architecture)** principles and a secure authentication system using **JWT (JSON Web Tokens)**.
 
-## 🚀 Fitur Utama
+## 🚀 Key Features
 
-- **Autentikasi Pengguna**:
-  - Pendaftaran Akun (`Sign Up`).
-  - Masuk Akun (`Sign In`) dengan pengembalian Access Token (yang disimpan dalam cookie) dan Refresh Token.
-  - Refresh Token (`Refresh`) untuk memperbarui masa berlaku session.
-  - Pengambilan data profil pengguna (`Get User`).
-- **Manajemen Blog & Artikel (Posts)**:
-  - Membuat artikel baru (`Create Post`).
-  - Melihat semua daftar artikel (`Get All Posts`).
-  - Melihat detail artikel berdasarkan ID (`Get Post by ID`).
-- **Interaksi Sosial**:
-  - Menambahkan komentar pada artikel tertentu (`Create Comment`).
-  - Memberikan reaksi/aktivitas (seperti Like, Love, dll.) pada artikel (`User Activity`).
-- **Keamanan**:
-  - Middleware autentikasi menggunakan token JWT.
-  - Validasi token JWT yang dikirimkan melalui cookie HTTP-only atau header.
-  - Konfigurasi aplikasi yang terpusat menggunakan library Viper.
+- **User Authentication (Memberships)**:
+  - Account registration (`Sign Up`).
+  - Login (`Sign In`) returning an Access Token (stored in a cookie) and a Refresh Token.
+  - Session renewal (`Refresh Token`) using a refresh token.
+  - Fetching user profile information (`Get User`).
+- **Blog & Article Management (Posts)**:
+  - Create a new blog post (`Create Post`).
+  - Retrieve all blog posts (`Get All Posts`).
+  - Retrieve details of a specific blog post by its ID (`Get Post by ID`).
+- **Social Interactions**:
+  - Comment on articles (`Create Comment`).
+  - React/Interactions (like, love, etc.) on articles (`User Activity`).
+- **Security**:
+  - Middleware for route authentication via JWT.
+  - JWT token validation supported via HTTP-only cookies or Authorization headers.
+  - Centralized application configuration using Viper.
 
 ---
 
-## 🏗️ Struktur Project
+## 🏗️ Project Structure
 
-Project ini dirancang menggunakan arsitektur berlapis untuk pemisahan tanggung jawab yang jelas (*Separation of Concerns*):
+The project is structured using layered architecture for clear separation of concerns:
 
 ```text
 go-simple-blog-v2/
-├── cmd/                # Entrypoint alternatif / CLI commands (jika ada)
-├── db/                 # Data penyimpanan database lokal (dihubungkan ke docker volume)
-├── internal/           # Berisi kode internal aplikasi yang tidak diekspos ke luar
-│   ├── configs/        # Konfigurasi aplikasi (memakai Viper)
-│   ├── constants/      # Kumpulan konstanta error & pesan sukses global
-│   ├── handlers/       # Layer Handler (HTTP Controller) untuk routing request (Gin)
-│   ├── middleware/     # Middleware CORS dan Autentikasi JWT
-│   ├── model/          # Representasi data, model database, dan request/response struct
-│   ├── repository/     # Layer Repository untuk query & manipulasi data database (MySQL)
-│   └── service/        # Layer Service untuk logika bisnis utama (business logic)
-├── pkg/                # Helper library/utilitas yang bisa digunakan kembali (JWT, DB connector)
+├── cmd/                # Alternative entrypoints / CLI commands (if any)
+├── db/                 # Local database storage (mapped to a docker volume)
+├── internal/           # Internal application code (not exposed to external packages)
+│   ├── configs/        # App configuration loader and yaml configuration (Viper)
+│   ├── constants/      # Global error and success messages
+│   ├── handlers/       # Handler layer (HTTP controllers & routing using Gin)
+│   ├── middleware/     # CORS and JWT authentication middleware
+│   ├── model/          # Data representations, database models, and request/response structs
+│   ├── repository/     # Repository layer for database CRUD operations (MySQL)
+│   └── service/        # Service layer for core business logic
+├── pkg/                # Reusable helper packages (JWT utilities, SQL connector)
 ├── scripts/
-│   └── migrations/     # File migrasi skema database (.sql)
-├── docker_compose.yaml # Konfigurasi Docker compose untuk MySQL database
-├── go.mod              # Dependency manager Go
-├── Makefile            # Kumpulan shortcut command (migrasi, run, dll)
-├── README.md           # Dokumentasi project
-└── main.go             # Entrypoint utama aplikasi
+│   └── migrations/     # Database schema migration files (.sql)
+├── docker_compose.yaml # Docker Compose configuration for MySQL database
+├── go.mod              # Go module dependency list
+├── Makefile            # Shell shortcuts (run database migrations, run application, etc.)
+├── README.md           # Project documentation
+└── main.go             # Application entrypoint
 ```
 
 ---
 
-## 🌊 Alur Data (Data Flow)
+## 🌊 Data Flow
 
-Alur request-response di dalam project ini mengikuti alur linear Clean Architecture sebagai berikut:
+The request-response cycle follows a linear Clean Architecture flow:
 
 ```mermaid
 graph TD
-    Client[Client / Frontend] -->|HTTP Request| Middleware{Middleware JWT / CORS}
-    Middleware -->|Lolos Validasi| Handler[Handler Layer]
-    Handler -->|1. Bind & Validasi Input JSON| Service[Service Layer]
-    Service -->|2. Logika Bisnis Utama| Repository[Repository Layer]
-    Repository -->|3. Query SQL| DB[(MySQL Database)]
+    Client[Client / Frontend] -->|HTTP Request| Middleware{JWT / CORS Middleware}
+    Middleware -->|Authorized| Handler[Handler Layer]
+    Handler -->|1. Bind & Validate Input JSON| Service[Service Layer]
+    Service -->|2. Core Business Logic| Repository[Repository Layer]
+    Repository -->|3. SQL Query| DB[(MySQL Database)]
     DB -->|Data| Repository
     Repository -->|Domain Model| Service
     Service -->|DTO / Entity| Handler
     Handler -->|4. HTTP Response JSON| Client
 ```
 
-1. **Client / Frontend**: Mengirimkan HTTP Request ke endpoint tertentu (misalnya, membuat postingan baru).
-2. **Middleware**: Jika rute tersebut dilindungi (seperti `/posts/*`), Middleware akan mengekstrak token JWT dari cookie `access_token` dan melakukan verifikasi. Jika token tidak valid, request dihentikan dan mengembalikan status `401 Unauthorized`.
-3. **Handler Layer (Controller)**: Menerima request yang lolos dari middleware, melakukan *binding* JSON input ke struct model request, lalu meneruskannya ke Service Layer.
-4. **Service Layer (Business Logic)**: Memproses logika bisnis (misal: memvalidasi kecocokan password, mengolah teks, dll.), lalu berinteraksi dengan Repository.
-5. **Repository Layer (Data Access)**: Menghubungkan logika ke database menggunakan koneksi SQL untuk menyimpan atau mengambil data.
-6. **Database**: MySQL menyimpan status data secara persisten.
+1. **Client / Frontend**: Sends an HTTP request to a specific endpoint (e.g., creating a new post).
+2. **Middleware**: For protected routes (like `/posts/*`), the middleware extracts the JWT token from the `access_token` cookie and verifies it. If the token is invalid or missing, it aborts the request and returns a `401 Unauthorized` status.
+3. **Handler Layer (Controller)**: Receives the request, binds the incoming JSON payload to a request model struct, and passes it to the Service layer.
+4. **Service Layer (Business Logic)**: Coordinates the business rules (e.g., password hashing comparison, data validation, permission checks) and calls the Repository layer.
+5. **Repository Layer (Data Access)**: Executes SQL queries on the database to read or write data.
+6. **Database**: MySQL persists the data.
 
 ---
 
-## ⚙️ Konfigurasi & Cara Menjalankan
+## ⚙️ Configuration & Getting Started
 
-Untuk menjalankan project ini di komputer lokal Anda, silakan ikuti langkah-langkah di bawah ini:
+Follow the instructions below to set up and run this project locally:
 
-### Prerequisites (Prasyarat)
-Pastikan Anda sudah menginstal alat-alat berikut di komputer Anda:
-- [Go](https://go.dev/dl/) (versi 1.20+)
-- [Docker & Docker Compose](https://www.docker.com/) (untuk menjalankan database MySQL dengan cepat)
-- [Golang-Migrate CLI](https://github.com/golang-migrate/migrate) (opsional, untuk melakukan migrasi database lewat Makefile)
+### Prerequisites
+Make sure you have the following installed on your machine:
+- [Go](https://go.dev/dl/) (version 1.20+)
+- [Docker & Docker Compose](https://www.docker.com/) (to run the MySQL database easily)
+- [Golang-Migrate CLI](https://github.com/golang-migrate/migrate) (optional, to run migrations via Makefile)
 
-### Langkah-langkah:
+### Step-by-Step Instructions:
 
-#### 1. Clone Repository
+#### 1. Clone the Repository
 ```bash
 git clone https://github.com/ArielioBayu/go-simple-blog-v2.git
 cd go-simple-blog-v2
 ```
 
-#### 2. Siapkan File Konfigurasi (PENTING)
-Demi menjaga keamanan kredensial dan kunci rahasia agar tidak terekspos ke publik (GitHub), file konfigurasi asli `config.yaml` tidak dimasukkan ke dalam repository (diabaikan menggunakan `.gitignore`). 
+#### 2. Set Up the Configuration File
+To prevent exposing sensitive credentials (e.g., database passwords, JWT secret keys) to public repositories, the actual `config.yaml` is excluded via `.gitignore`. 
 
-Anda perlu menduplikat file contoh konfigurasi yang telah disediakan:
-1. Masuk ke direktori `internal/configs/`.
-2. Salin file `config.yaml.example` dan ubah namanya menjadi `config.yaml`.
-3. Buka file `config.yaml` dan sesuaikan kredensial database serta port sesuai kebutuhan Anda.
+You must copy the template configuration file and configure it:
+1. Navigate to the `internal/configs/` directory.
+2. Copy `config.yaml.example` to `config.yaml`.
+3. Open `config.yaml` and edit the database DSN and service port to match your local setup.
 
 ```bash
-# Contoh menyalin file konfigurasi di Linux/macOS
+# On Linux/macOS
 cp internal/configs/config.yaml.example internal/configs/config.yaml
 
-# Contoh menyalin file konfigurasi di Windows (PowerShell)
+# On Windows (PowerShell)
 copy internal/configs/config.yaml.example internal/configs/config.yaml
 ```
 
-Isi dari `config.yaml` akan terlihat seperti ini (isi dengan konfigurasi milik Anda secara lokal):
+The contents of `config.yaml` should look like this:
 ```yaml
 service:
-  port: ":9888" # Port tempat server HTTP berjalan
-  secret_key: "kunci_rahasia_jwt_anda" # Kunci rahasia untuk tanda tangan JWT
+  port: ":9888" # The port where the HTTP server runs
+  secret_key: "your_secure_jwt_secret_key" # Secret key for signing JWTs
 
 database:
-  dbsourcename: "root:secret@tcp(localhost:3306)/db-simple-blog?parseTime=true&loc=Asia%2FJakarta" # Koneksi MySQL DSN
+  dbsourcename: "root:secret@tcp(localhost:3306)/db-simple-blog?parseTime=true&loc=Asia%2FJakarta" # MySQL Connection DSN
 ```
 
-#### 3. Jalankan Database MySQL (Docker)
-Gunakan Docker Compose untuk langsung menjalankan instance MySQL lokal yang sudah terkonfigurasi:
+#### 3. Run the MySQL Database (Docker)
+Start the pre-configured MySQL instance using Docker Compose:
 ```bash
 docker-compose up -d
 ```
-*Database MySQL akan berjalan pada port `3306` dengan password root `secret` dan database otomatis terbuat dengan nama `db-simple-blog`.*
+*This starts a MySQL instance on port `3306` with the root password `secret` and creates the database `db-simple-blog`.*
 
-#### 4. Jalankan Migrasi Database
-Setelah database MySQL berjalan, jalankan migrasi tabel menggunakan command make:
+#### 4. Run Database Migrations
+Once the database container is healthy and running, run the migration scripts to build the database schema:
 ```bash
 make migrate-up
 ```
-*Perintah ini akan membaca semua file skema SQL yang berada di dalam folder `scripts/migrations` dan menerapkannya ke database MySQL Anda.*
+*This command runs the SQL scripts in `scripts/migrations` to create the database tables.*
 
-#### 5. Jalankan Server Aplikasi
-Jalankan aplikasi utama:
+#### 5. Start the Application Server
+Run the main application:
 ```bash
 go run main.go
 ```
-Server akan mulai mendengarkan request pada port yang ditentukan di `config.yaml` (default `:9888`).
+The server will start listening on the port configured in `config.yaml` (default is `:9888`).
 
 ---
 
-## 📌 Daftar Endpoint API
+## 📌 API Endpoints
 
-### 👥 Modul Memberships (Autentikasi & Pengguna)
-| Method | Endpoint | Auth | Deskripsi |
+### 👥 Memberships Module (Authentication & User)
+| Method | Endpoint | Auth | Description |
 | :--- | :--- | :--- | :--- |
-| **POST** | `/memberships/sign-up` | ❌ No | Pendaftaran akun baru |
-| **POST** | `/memberships/sign-in` | ❌ No | Masuk akun, menghasilkan JWT & Refresh token |
-| **GET** | `/memberships/get-user` | ❌ No | Mengambil informasi detail akun |
-| **POST** | `/memberships/refresh` | ❌ No | Memperbarui masa aktif access token menggunakan refresh token |
+| **POST** | `/memberships/sign-up` | ❌ No | Register a new user account |
+| **POST** | `/memberships/sign-in` | ❌ No | Authenticate user, returns Access Token (cookie) & Refresh Token |
+| **GET** | `/memberships/get-user` | ❌ No | Get details of the authenticated user |
+| **POST** | `/memberships/refresh` | ❌ No | Refresh an expired access token using a refresh token |
 
-### 📝 Modul Posts (Artikel, Komentar, & Aktivitas)
-Semua endpoint di bawah ini membutuhkan cookie autentikasi `access_token` yang valid.
+### 📝 Posts Module (Articles, Comments, & Activities)
+All endpoints under the `/posts` path require a valid `access_token` cookie.
 
-| Method | Endpoint | Auth | Deskripsi |
+| Method | Endpoint | Auth | Description |
 | :--- | :--- | :--- | :--- |
-| **POST** | `/posts/create-post` |  Yes | Membuat artikel baru |
-| **GET** | `/posts/get-all-post` |  Yes | Mengambil daftar semua artikel |
-| **GET** | `/posts/get-post-by-id/:postId`|  Yes | Mengambil detail artikel berdasarkan ID |
-| **POST** | `/posts/create-comment/:postId` |  Yes | Memberikan komentar di artikel |
-| **POST** | `/posts/user-activity/:postId` |  Yes | Memberikan reaksi/aktivitas (seperti Like/Love) di artikel |
+| **POST** | `/posts/create-post` |  Yes | Create a new blog post |
+| **GET** | `/posts/get-all-post` |  Yes | Retrieve all blog posts |
+| **GET** | `/posts/get-post-by-id/:postId`|  Yes | Retrieve details of a specific blog post by its ID |
+| **POST** | `/posts/create-comment/:postId` |  Yes | Post a comment on a blog post |
+| **POST** | `/posts/user-activity/:postId` |  Yes | Perform user reaction/activity (e.g., Like, Love) on a blog post |
