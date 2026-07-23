@@ -1,6 +1,0 @@
-service:
-  port: ":9888" # Port where the Gin server will run
-  secret_key: "change_this_to_your_secure_secret_key" # Secret key for JWT signing
-
-database:
-  dbsourcename: "username:password@tcp(localhost:3306)/database_name?parseTime=true&loc=Asia%2FJakarta" # DSN (Data Source Name) connection string for MySQL

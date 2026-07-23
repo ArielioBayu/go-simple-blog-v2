@@ -1,0 +1,11 @@
+services:
+  db:
+    image: mysql:latest
+    container_name: simple-blog-v2
+    ports:
+      - "3308:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=your_root_password_here
+      - MYSQL_DATABASE=your_database_name_here
+    volumes:
+      - "./db:/var/lib/mysql"
