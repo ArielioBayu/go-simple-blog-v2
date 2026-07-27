@@ -1,4 +1,4 @@
-export MYSQL_URL='mysql://root:secret@tcp(localhost:3306)/db-simple-blog'
+export MYSQL_URL='mysql://root:secret@tcp(localhost:3308)/db-simple-blog'
 
 migrate-create:
 	@ migrate create -ext sql -dir scripts/migrations -seq $(name)

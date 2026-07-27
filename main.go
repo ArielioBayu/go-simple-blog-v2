@@ -43,6 +43,9 @@ func main() {
 		log.Fatal("Gagal Inisiasi Database", err)
 	}
 
+	//	Jalankan migration secara otomatis saat startup
+	internalsql.RunMigration(db, "./scripts/migrations")
+
 	r.Use(middleware.CorsMiddleware())
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())

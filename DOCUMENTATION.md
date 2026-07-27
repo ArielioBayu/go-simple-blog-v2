@@ -313,24 +313,29 @@ main()
   ├── 3. internalsql.Connect(dsn)
   │         → Buka koneksi MySQL (*sql.DB)
   │
-  ├── 4. Pasang Middleware Global
+  ├── 4. internalsql.RunMigration(db, "./scripts/migrations")
+  │         → Jalankan semua migration yang belum diaplikasikan
+  │         → Jika ErrNoChange → log info (bukan fatal)
+  │         → Jika error lain  → log.Fatal (app berhenti)
+  │
+  ├── 5. Pasang Middleware Global
   │         ├── middleware.CorsMiddleware()   → Izinkan CORS dari localhost:3000
   │         ├── gin.Logger()                  → Log setiap request
   │         └── gin.Recovery()                → Recover dari panic
   │
-  ├── 5. Inisialisasi Repository
+  ├── 6. Inisialisasi Repository
   │         ├── membershipsRepo.NewMembershipsRepository(db)
   │         └── postsRepo.NewPostsRepository(db)
   │
-  ├── 6. Inisialisasi Service
+  ├── 7. Inisialisasi Service
   │         ├── membershipsSrv.NewMembershipsService(cfg, membershipsRepo)
   │         └── postsSrv.NewPostsService(cfg, postsRepo)
   │
-  ├── 7. Inisialisasi Handler & Registrasi Route
+  ├── 8. Inisialisasi Handler & Registrasi Route
   │         ├── membershipsHandler.RegisterRoute()  → /memberships/*
   │         └── postsHandler.RegisterRoute()         → /posts/* (dengan auth middleware)
   │
-  └── 8. r.Run(cfg.Service.Port)
+  └── 9. r.Run(cfg.Service.Port)
             → Server berjalan di port yang dikonfigurasi (default :9888)
 ```
 
@@ -817,12 +822,27 @@ Handler InsertUpdateActivities
 
 ## 11. Package Shared (pkg/)
 
-### `pkg/internalsql` — Koneksi Database
+### `pkg/internalsql` — Koneksi Database & Migration
 
 ```go
 // Membuka koneksi MySQL, fatal jika gagal
 func Connect(datasource string) (*sql.DB, error)
+
+// Menjalankan semua file migration yang belum diaplikasikan secara otomatis.
+// migrationPath: path relatif ke folder migration (contoh: "./scripts/migrations")
+// - Menggunakan golang-migrate dengan source driver "file" dan database driver "mysql"
+// - Jika ErrNoChange: log info (tidak fatal, berarti semua sudah up-to-date)
+// - Jika error lain: log.Fatal (aplikasi berhenti)
+func RunMigration(db *sql.DB, migrationPath string)
 ```
+
+**Dependency tambahan yang digunakan:**
+
+| Package                                          | Fungsi                                      |
+|--------------------------------------------------|---------------------------------------------|
+| `github.com/golang-migrate/migrate/v4`           | Core library golang-migrate                 |
+| `github.com/golang-migrate/migrate/v4/database/mysql` | Driver database MySQL untuk migrate    |
+| `github.com/golang-migrate/migrate/v4/source/file`   | Driver source untuk membaca file `.sql` |
 
 ---
 
@@ -1003,6 +1023,7 @@ Seluruh error sentral didefinisikan di `internal/constants/errors.go`:
 
 ## 16. Changelog Dokumentasi
 
-| Versi | Tanggal    | Perubahan                                    | Oleh                |
-|-------|------------|----------------------------------------------|---------------------|
-| 1.0.0 | 2026-07-23 | Dokumentasi awal — analisis seluruh codebase | Antigravity (AI)    |
+| Versi | Tanggal    | Perubahan                                                                 | Oleh             |
+|-------|------------|---------------------------------------------------------------------------|------------------|
+| 1.0.0 | 2026-07-23 | Dokumentasi awal — analisis seluruh codebase                              | Antigravity (AI) |
+| 1.1.0 | 2026-07-24 | Tambah fitur auto-migration: `RunMigration` di `pkg/internalsql`, dipanggil di `main.go` saat startup | Antigravity (AI) |
