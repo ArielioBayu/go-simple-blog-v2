@@ -16,13 +16,26 @@ func AuthMiddleware() gin.HandlerFunc {
 		header := ctx.Request.Header.Get("Authorization")
 		header = strings.TrimSpace(header)
 		if header == "" {
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, constants.ErrMissingToken)
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"message": constants.ErrMissingToken.Error(),
+			})
 			return
 		}
 
-		id, username, err := jwt.ValidateToken(header, secretKey)
+		tokenStr := strings.TrimPrefix(header, "Bearer ")
+		tokenStr = strings.TrimSpace(tokenStr)
+		if tokenStr == "" {
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"message": constants.ErrMissingToken.Error(),
+			})
+			return
+		}
+
+		id, username, err := jwt.ValidateToken(tokenStr, secretKey)
 		if err != nil {
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, constants.ErrInvalidToken)
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"message": constants.ErrInvalidToken.Error(),
+			})
 			return
 		}
 		ctx.Set("id", id)
@@ -36,13 +49,17 @@ func AuthMiddlewareToken() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		accessToken, err := ctx.Cookie("access_token")
 		if err != nil || strings.TrimSpace(accessToken) == "" {
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, constants.ErrMissingToken)
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"message": constants.ErrMissingToken.Error(),
+			})
 			return
 		}
 
 		id, username, err := jwt.ValidateToken(accessToken, secretKey)
 		if err != nil {
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, constants.ErrInvalidToken)
+			ctx.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"message": constants.ErrInvalidToken.Error(),
+			})
 			return
 		}
 		ctx.Set("id", id)

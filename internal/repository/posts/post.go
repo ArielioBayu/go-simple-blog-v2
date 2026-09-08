@@ -23,12 +23,15 @@ func (r *postsRepository) CreatePost(ctx context.Context, model posts.PostModel)
 	return nil
 }
 
-func (r *postsRepository) GetAllPost(ctx context.Context, limit, offset int) (posts.GetAllPostResponse, error) {
+func (r *postsRepository) GetAllPost(ctx context.Context, limit, offset, userID int) (posts.GetAllPostResponse, error) {
 	var response posts.GetAllPostResponse
-	query := `SELECT p.id, p.user_id, u.username, p.post_title, p.post_content, p.post_hashtags, p.created_at, p.updated_at
+	query := `SELECT p.id, p.user_id, u.username, p.post_title, p.post_content, p.post_hashtags, COALESCE(act.is_liked, false), p.created_at, p.updated_at
 				FROM posts as p
-				JOIN users as u ON p.user_id = u.id LIMIT ? OFFSET ?`
-	rows, err := r.DB.QueryContext(ctx, query, limit, offset)
+				JOIN users as u ON p.user_id = u.id
+				LEFT JOIN activities as act ON p.id = act.post_id AND act.user_id = ?
+				ORDER BY p.created_at DESC 
+				LIMIT ? OFFSET ?`
+	rows, err := r.DB.QueryContext(ctx, query, userID, limit, offset)
 	if err != nil {
 		return response, fmt.Errorf("Repository GetAllPost: %w", err)
 	}
@@ -37,6 +40,7 @@ func (r *postsRepository) GetAllPost(ctx context.Context, limit, offset int) (po
 	data := make([]posts.Data, 0) //	Buat slice kosong
 	for rows.Next() {
 		var username string
+		var isliked bool
 		var model posts.PostModel
 
 		err = rows.Scan(
@@ -46,6 +50,7 @@ func (r *postsRepository) GetAllPost(ctx context.Context, limit, offset int) (po
 			&model.PostTitle,
 			&model.PostContent,
 			&model.PostHashtags,
+			&isliked,
 			&model.CreatedAt,
 			&model.UpdatedAt,
 		)
@@ -60,6 +65,7 @@ func (r *postsRepository) GetAllPost(ctx context.Context, limit, offset int) (po
 			PostTitle:    model.PostTitle,
 			PostContent:  model.PostContent,
 			PostHashtags: strings.Split(model.PostHashtags, ","),
+			IsLiked:      isliked,
 			UpdatedAt:    model.UpdatedAt,
 			CreatedAt:    model.CreatedAt,
 		})
@@ -73,14 +79,15 @@ func (r *postsRepository) GetAllPost(ctx context.Context, limit, offset int) (po
 	return response, nil
 }
 
-func (r *postsRepository) GetPostById(ctx context.Context, id int) (*posts.Data, error) {
-	query := `SELECT p.id, p.user_id, u.username, p.post_title, p.post_content, p.post_hashtags, act.is_liked, p.created_at, p.updated_at 
+func (r *postsRepository) GetPostById(ctx context.Context, id, userID int) (*posts.Data, error) {
+	query := `SELECT p.id, p.user_id, u.username, p.post_title, p.post_content, p.post_hashtags, COALESCE(act.is_liked, false), p.created_at, p.updated_at 
 				FROM posts as p
 				JOIN users as u ON p.user_id = u.id
-				JOIN activities as act ON p.id = act.post_id 
-				WHERE p.id = ?`
+				LEFT JOIN activities as act ON p.id = act.post_id AND act.user_id = ?
+				WHERE p.id = ?
+				LIMIT 1`
 
-	row := r.DB.QueryRowContext(ctx, query, id)
+	row := r.DB.QueryRowContext(ctx, query, userID, id)
 	var (
 		model    posts.PostModel
 		username string

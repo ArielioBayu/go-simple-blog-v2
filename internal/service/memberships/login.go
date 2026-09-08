@@ -22,6 +22,15 @@ func (s *membershipsService) GetUser(ctx context.Context, request memberships.Si
 	return data, nil
 }
 
+func (s *membershipsService) GetUserById(ctx context.Context, id int) (*memberships.UserModel, error) {
+	data, err := s.membershipsRepo.GetUserById(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
+
 func (s *membershipsService) SignUp(ctx context.Context, request memberships.SignUpRequest) error {
 	user, err := s.membershipsRepo.GetUser(ctx, request.Email, request.Username)
 	if err != nil {

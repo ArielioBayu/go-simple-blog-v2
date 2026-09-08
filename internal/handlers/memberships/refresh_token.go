@@ -24,9 +24,17 @@ func (h *Handler) Refresh(c *gin.Context) {
 
 	refreshToken, err := h.membershipsService.GetIdRefreshToken(ctx, request)
 	if err != nil {
+		if errors.Is(err, constants.ErrInvalidToken) {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"message": err.Error(),
+			})
+			return
+		}
+		log.Printf("handler refresh failed | error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"message": "internal server error",
 		})
+		return
 	}
 
 	token, err := h.membershipsService.ValidateRefreshToken(ctx, refreshToken.UserId, request)

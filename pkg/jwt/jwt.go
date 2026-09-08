@@ -40,8 +40,27 @@ func ValidateToken(tokenStr, secretKey string) (int, string, error) {
 		return 0, "", constants.ErrInvalidToken
 	}
 
-	var id = int(claims["id"].(float64))
-	var username = claims["username"].(string)
+	idRaw, ok := claims["id"]
+	if !ok {
+		return 0, "", constants.ErrInvalidToken
+	}
+
+	var id int
+	switch v := idRaw.(type) {
+	case float64:
+		id = int(v)
+	case int:
+		id = v
+	case int64:
+		id = int(v)
+	default:
+		return 0, "", constants.ErrInvalidToken
+	}
+
+	username, ok := claims["username"].(string)
+	if !ok || username == "" {
+		return 0, "", constants.ErrInvalidToken
+	}
 
 	return id, username, nil
 }

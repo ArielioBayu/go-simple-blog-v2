@@ -13,8 +13,8 @@ type PostsRepository interface {
 	CreateComment(ctx context.Context, model posts.CommentModel) error
 	CreateActivities(ctx context.Context, model posts.ActivityModel) error
 	GetActivities(ctx context.Context, postId, userId int) (*posts.ActivityModel, error)
-	GetAllPost(ctx context.Context, limit, offset int) (posts.GetAllPostResponse, error)
-	GetPostById(ctx context.Context, id int) (*posts.Data, error)
+	GetAllPost(ctx context.Context, limit, offset, userID int) (posts.GetAllPostResponse, error)
+	GetPostById(ctx context.Context, id, userID int) (*posts.Data, error)
 	GetCommentById(ctx context.Context, postId int) ([]posts.GetComment, error)
 	UpdateActivities(ctx context.Context, model posts.ActivityModel) error
 }

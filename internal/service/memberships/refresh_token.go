@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/constants"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/model/memberships"
 	"github.com/ArielioBayu/go-simple-blog-v2/pkg/jwt"
 )
@@ -14,6 +15,10 @@ func (s *membershipsService) GetIdRefreshToken(ctx context.Context, request memb
 	idRefreshToken, err := s.membershipsRepo.GetIdRefreshToken(ctx, request)
 	if err != nil {
 		return nil, fmt.Errorf("service GetIdRefreshToken: %w", err)
+	}
+
+	if idRefreshToken == nil {
+		return nil, constants.ErrInvalidToken
 	}
 
 	return idRefreshToken, nil

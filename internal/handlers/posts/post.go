@@ -37,26 +37,33 @@ func (h *Handler) CreatePost(c *gin.Context) {
 
 func (h *Handler) GetAllPost(c *gin.Context) {
 	ctx := c.Request.Context()
-	pageIndexStr := c.Query("pageIndex")
-	pageSizeStr := c.Query("pageSize")
 
-	pageIndex, err := strconv.Atoi(pageIndexStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Invalid page index",
-		})
-		return
+	pageIndex := 1
+	if pageIndexStr := c.Query("pageIndex"); pageIndexStr != "" {
+		p, err := strconv.Atoi(pageIndexStr)
+		if err != nil || p <= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "Invalid page index",
+			})
+			return
+		}
+		pageIndex = p
 	}
 
-	pageSize, err := strconv.Atoi(pageSizeStr)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Invalid page size",
-		})
-		return
+	pageSize := 10
+	if pageSizeStr := c.Query("pageSize"); pageSizeStr != "" {
+		s, err := strconv.Atoi(pageSizeStr)
+		if err != nil || s <= 0 {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"message": "Invalid page size",
+			})
+			return
+		}
+		pageSize = s
 	}
 
-	response, err := h.srv.GetAllPost(ctx, pageSize, pageIndex)
+	userID := c.GetInt("id")
+	response, err := h.srv.GetAllPost(ctx, pageSize, pageIndex, userID)
 	if err != nil {
 		log.Printf("GetAllPost Failed | error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -82,7 +89,8 @@ func (h *Handler) GetPostById(c *gin.Context) {
 		return
 	}
 
-	data, err := h.srv.GetPostById(ctx, postIdInt)
+	userID := c.GetInt("id")
+	data, err := h.srv.GetPostById(ctx, postIdInt, userID)
 	if err != nil {
 		if errors.Is(err, constants.ErrPostNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{

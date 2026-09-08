@@ -36,11 +36,11 @@ func (s *postsService) CreatePost(ctx context.Context, userId int, request posts
 	return nil
 }
 
-func (s *postsService) GetAllPost(ctx context.Context, pageSize, pageIndex int) (posts.GetAllPostResponse, error) {
+func (s *postsService) GetAllPost(ctx context.Context, pageSize, pageIndex, userID int) (posts.GetAllPostResponse, error) {
 	limit := pageSize
 	offset := pageSize * (pageIndex - 1)
 
-	response, err := s.postsRepo.GetAllPost(ctx, limit, offset)
+	response, err := s.postsRepo.GetAllPost(ctx, limit, offset, userID)
 	if err != nil {
 		return response, fmt.Errorf("Service GetAllPost: %w", err)
 	}
@@ -48,8 +48,8 @@ func (s *postsService) GetAllPost(ctx context.Context, pageSize, pageIndex int) 
 	return response, nil
 }
 
-func (s *postsService) GetPostById(ctx context.Context, id int) (*posts.GetPostResponse, error) {
-	data, err := s.postsRepo.GetPostById(ctx, id)
+func (s *postsService) GetPostById(ctx context.Context, id, userID int) (*posts.GetPostResponse, error) {
+	data, err := s.postsRepo.GetPostById(ctx, id, userID)
 	if err != nil {
 		return nil, fmt.Errorf("Service GetPostById: %w", err)
 	}

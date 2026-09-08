@@ -3,6 +3,7 @@ package memberships
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -56,6 +57,9 @@ func (r *repository) GetIdRefreshToken(ctx context.Context, request memberships.
 		&model.ExpiredAt,
 	)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("repository get id refresh token: %w", err)
 	}
 

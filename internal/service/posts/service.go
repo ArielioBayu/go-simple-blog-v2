@@ -11,8 +11,8 @@ import (
 type PostsService interface {
 	CreatePost(ctx context.Context, userId int, request posts.PostRequest) error
 	CreateComment(ctx context.Context, postId, userId int, request posts.CommentRequest) error
-	GetAllPost(ctx context.Context, pageSize, pageIndex int) (posts.GetAllPostResponse, error)
-	GetPostById(ctx context.Context, id int) (*posts.GetPostResponse, error)
+	GetAllPost(ctx context.Context, pageSize, pageIndex, userID int) (posts.GetAllPostResponse, error)
+	GetPostById(ctx context.Context, id, userID int) (*posts.GetPostResponse, error)
 	InsertUpdateActivities(ctx context.Context, postId, userId int, request posts.ActivityRequest) error
 }
 
