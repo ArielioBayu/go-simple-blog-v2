@@ -10,8 +10,9 @@ var (
 	ErrUnauthorized                 = errors.New("Unauthorized")
 
 	// Not Found
-	ErrDataNotFound = errors.New("Data Not Found")
-	ErrPostNotFound = errors.New("Error Post Not Found")
+	ErrDataNotFound         = errors.New("Data Not Found")
+	ErrPostNotFound         = errors.New("Error Post Not Found")
+	ErrRefreshTokenNotFound = errors.New("refresh token not found")
 
 	//	Invalid Token
 	ErrInvalidToken    = errors.New("invalid token")

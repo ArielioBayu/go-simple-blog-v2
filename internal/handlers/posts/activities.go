@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/model/posts"
+	"github.com/ArielioBayu/go-simple-blog-v2/pkg/response"
 	"github.com/gin-gonic/gin"
 )
 
@@ -15,8 +16,9 @@ func (h *Handler) InsertUpdateActivities(c *gin.Context) {
 	var request posts.ActivityRequest
 	err := c.ShouldBindJSON(&request)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"messsage": err.Error(),
+		c.JSON(http.StatusBadRequest, response.MessageResponse{
+			Status:  http.StatusBadRequest,
+			Message: err.Error(),
 		})
 		return
 	}
@@ -24,8 +26,9 @@ func (h *Handler) InsertUpdateActivities(c *gin.Context) {
 	// Get postId from param
 	postId, err := strconv.Atoi(c.Param("postId"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "Invalid Post Id",
+		c.JSON(http.StatusBadRequest, response.MessageResponse{
+			Status:  http.StatusBadRequest,
+			Message: "Invalid Post Id",
 		})
 		return
 	}
@@ -33,8 +36,9 @@ func (h *Handler) InsertUpdateActivities(c *gin.Context) {
 	// Get userId from middleware
 	userId, exists := c.Get("id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"message": "Unauthorized",
+		c.JSON(http.StatusUnauthorized, response.MessageResponse{
+			Status:  http.StatusUnauthorized,
+			Message: "Unauthorized",
 		})
 		return
 	}
@@ -42,13 +46,15 @@ func (h *Handler) InsertUpdateActivities(c *gin.Context) {
 	err = h.srv.InsertUpdateActivities(ctx, postId, userId.(int), request)
 	if err != nil {
 		log.Printf("InsertUpdateActivities failed | error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Internal server error",
+		c.JSON(http.StatusInternalServerError, response.MessageResponse{
+			Status:  http.StatusInternalServerError,
+			Message: "Internal server error",
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "success",
+	c.JSON(http.StatusOK, response.MessageResponse{
+		Status:  http.StatusOK,
+		Message: "success",
 	})
 }

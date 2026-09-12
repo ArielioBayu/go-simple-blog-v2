@@ -8,6 +8,7 @@ import (
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/constants"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/model/posts"
+	"github.com/ArielioBayu/go-simple-blog-v2/pkg/response"
 	"github.com/gin-gonic/gin"
 )
 
@@ -15,8 +16,9 @@ func (h *Handler) CreatePost(c *gin.Context) {
 	var request posts.PostRequest
 	err := c.ShouldBindJSON(&request)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": err.Error(),
+		c.JSON(http.StatusBadRequest, response.MessageResponse{
+			Status:  http.StatusBadRequest,
+			Message: err.Error(),
 		})
 		return
 	}
@@ -24,14 +26,16 @@ func (h *Handler) CreatePost(c *gin.Context) {
 	userId := c.GetInt("id")
 	err = h.srv.CreatePost(c, userId, request)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": err.Error(),
+		c.JSON(http.StatusInternalServerError, response.MessageResponse{
+			Status:  http.StatusInternalServerError,
+			Message: err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"message": "Success Create Post",
+	c.JSON(http.StatusCreated, response.MessageResponse{
+		Status:  http.StatusCreated,
+		Message: "Success Create Post",
 	})
 }
 
@@ -42,8 +46,9 @@ func (h *Handler) GetAllPost(c *gin.Context) {
 	if pageIndexStr := c.Query("pageIndex"); pageIndexStr != "" {
 		p, err := strconv.Atoi(pageIndexStr)
 		if err != nil || p <= 0 {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"message": "Invalid page index",
+			c.JSON(http.StatusBadRequest, response.MessageResponse{
+				Status:  http.StatusBadRequest,
+				Message: "Invalid page index",
 			})
 			return
 		}
@@ -54,8 +59,9 @@ func (h *Handler) GetAllPost(c *gin.Context) {
 	if pageSizeStr := c.Query("pageSize"); pageSizeStr != "" {
 		s, err := strconv.Atoi(pageSizeStr)
 		if err != nil || s <= 0 {
-			c.JSON(http.StatusBadRequest, gin.H{
-				"message": "Invalid page size",
+			c.JSON(http.StatusBadRequest, response.MessageResponse{
+				Status:  http.StatusBadRequest,
+				Message: "Invalid page size",
 			})
 			return
 		}
@@ -63,17 +69,24 @@ func (h *Handler) GetAllPost(c *gin.Context) {
 	}
 
 	userID := c.GetInt("id")
-	response, err := h.srv.GetAllPost(ctx, pageSize, pageIndex, userID)
+	postResp, err := h.srv.GetAllPost(ctx, pageSize, pageIndex, userID)
 	if err != nil {
 		log.Printf("GetAllPost Failed | error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "Internal server error",
+		c.JSON(http.StatusInternalServerError, response.MessageResponse{
+			Status:  http.StatusInternalServerError,
+			Message: "Internal server error",
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": response,
+	c.JSON(http.StatusOK, response.PaginationResponse{
+		Status:  http.StatusOK,
+		Message: "success get all post",
+		Pagination: &response.Pagination{
+			Limit:  postResp.Pagination.Limit,
+			Offset: postResp.Pagination.Offset,
+		},
+		Data: postResp.Data,
 	})
 }
 
@@ -83,8 +96,9 @@ func (h *Handler) GetPostById(c *gin.Context) {
 
 	postIdInt, err := strconv.Atoi(postId)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"message": "invalid post id",
+		c.JSON(http.StatusBadRequest, response.MessageResponse{
+			Status:  http.StatusBadRequest,
+			Message: "invalid post id",
 		})
 		return
 	}
@@ -93,20 +107,24 @@ func (h *Handler) GetPostById(c *gin.Context) {
 	data, err := h.srv.GetPostById(ctx, postIdInt, userID)
 	if err != nil {
 		if errors.Is(err, constants.ErrPostNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{
-				"message": "Post Not Found",
+			c.JSON(http.StatusNotFound, response.MessageResponse{
+				Status:  http.StatusNotFound,
+				Message: "Post Not Found",
 			})
 			return
 		}
 
 		log.Printf("GetPostById Failed | error: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "internal server error",
+		c.JSON(http.StatusInternalServerError, response.MessageResponse{
+			Status:  http.StatusInternalServerError,
+			Message: "internal server error",
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"data": data,
+	c.JSON(http.StatusOK, response.DataResponse{
+		Status:  http.StatusOK,
+		Message: "success get post",
+		Data:    data,
 	})
 }

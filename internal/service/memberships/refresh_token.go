@@ -2,7 +2,6 @@ package memberships
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -18,7 +17,7 @@ func (s *membershipsService) GetIdRefreshToken(ctx context.Context, request memb
 	}
 
 	if idRefreshToken == nil {
-		return nil, constants.ErrInvalidToken
+		return nil, constants.ErrRefreshTokenNotFound
 	}
 
 	return idRefreshToken, nil
@@ -33,12 +32,12 @@ func (s *membershipsService) ValidateRefreshToken(ctx context.Context, userId in
 	}
 
 	if existRefreshToken == nil {
-		return "", errors.New("refresh token not found")
+		return "", constants.ErrTokenExpired
 	}
 
 	//	cek kalo refresh token di db tidak sesuai sama token yang dimasukkan di client
 	if existRefreshToken.RefreshToken != request.Token {
-		return "", errors.New("invalid refresh token")
+		return "", constants.ErrInvalidToken
 	}
 
 	user, err := s.membershipsRepo.GetUserById(ctx, userId)

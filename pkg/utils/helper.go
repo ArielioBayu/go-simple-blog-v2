@@ -66,21 +66,35 @@ func (t *JsonTime) parseString(str string) error {
 }
 
 func SetAccessTokenCookie(c *gin.Context, token string) {
-	SetCookie(c, "access_token", token, 1*time.Minute)
+	SetCookie(c, "access_token", token, 24*time.Hour)
 }
 
 func SetCookie(c *gin.Context, name, token string, maxExpired time.Duration) {
+	isSecure := c.Request.TLS != nil || c.Request.Header.Get("X-Forwarded-Proto") == "https"
 	cookie := &http.Cookie{
 		Name:     name,
 		Value:    token,
 		Path:     "/",
 		MaxAge:   int(maxExpired.Seconds()),
-		HttpOnly: false,
+		HttpOnly: true,
+		Secure:   isSecure,
+		SameSite: http.SameSiteLaxMode,
 	}
 
 	http.SetCookie(c.Writer, cookie)
 }
 
-func GetCookie() {
+func ClearCookie(c *gin.Context, name string) {
+	isSecure := c.Request.TLS != nil || c.Request.Header.Get("X-Forwarded-Proto") == "https"
+	cookie := &http.Cookie{
+		Name:     name,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		Secure:   isSecure,
+		SameSite: http.SameSiteLaxMode,
+	}
 
+	http.SetCookie(c.Writer, cookie)
 }
