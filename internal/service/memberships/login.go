@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/constants"
@@ -41,25 +42,22 @@ func (s *membershipsService) SignUp(ctx context.Context, request memberships.Sig
 		return constants.ErrUsernameOrEmailAlreadyExists
 	}
 
-	//	Jika data user belum ada maka jalankan decrypt pwd
 	pass, err := bcrypt.GenerateFromPassword([]byte(request.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
 
-	// deklarasi waktu real time untuk created_at
 	time := time.Now()
 	model := memberships.UserModel{
 		Email:     request.Email,
 		Username:  request.Username,
-		Password:  string(pass), //	masukkan password yg telah dilakukan bcrypt
+		Password:  string(pass),
 		CreatedAt: time,
 		UpdatedAt: time,
 		CreatedBy: request.Email,
 		UpdatedBy: request.Email,
 	}
 
-	//	last step, create user
 	err = s.membershipsRepo.CreateUser(ctx, model)
 	if err != nil {
 		return err
@@ -90,7 +88,10 @@ func (s *membershipsService) SignIn(ctx context.Context, request memberships.Sig
 
 	now := time.Now()
 
-	//	cek refreshToken terlebih dahulu
+	if err := s.membershipsRepo.DeleteExpiredRefreshTokens(ctx, int(user.ID), now); err != nil {
+		log.Printf("[service signin]: failed to delete expired refresh tokens for user %d: %v", user.ID, err)
+	}
+
 	existsRefreshToken, err := s.membershipsRepo.GetRefreshToken(ctx, int(user.ID), now)
 	if err != nil {
 		return "", "", fmt.Errorf("service signin get refresh token: %w", err)

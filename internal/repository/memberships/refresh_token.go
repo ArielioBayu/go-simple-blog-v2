@@ -65,3 +65,12 @@ func (r *repository) GetIdRefreshToken(ctx context.Context, request memberships.
 
 	return &model, nil
 }
+
+func (r *repository) DeleteExpiredRefreshTokens(ctx context.Context, userId int, now time.Time) error {
+	query := `DELETE FROM refresh_tokens WHERE user_id = ? AND expired_at < ?`
+	_, err := r.DB.ExecContext(ctx, query, userId, now)
+	if err != nil {
+		return fmt.Errorf("repository delete expired refresh tokens: %w", err)
+	}
+	return nil
+}

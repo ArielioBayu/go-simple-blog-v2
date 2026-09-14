@@ -3,7 +3,9 @@ package internalsql
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"log"
+	"time"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/mysql"
@@ -13,22 +15,28 @@ import (
 func Connect(datasource string) (*sql.DB, error) {
 	db, err := sql.Open("mysql", datasource)
 	if err != nil {
-		log.Fatal("error connecting database", err)
+		return nil, fmt.Errorf("error opening database: %w", err)
+	}
+
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(25)
+	db.SetConnMaxLifetime(15 * time.Minute)
+	db.SetConnMaxIdleTime(5 * time.Minute)
+
+	// Verifikasi koneksi ke database saat startup
+	if err := db.Ping(); err != nil {
+		return nil, fmt.Errorf("error connecting to database: %w", err)
 	}
 
 	return db, nil
 }
 
-// RunMigration menjalankan semua file migration yang belum diaplikasikan
-// dari folder yang ditentukan oleh migrationPath (contoh: "scripts/migrations").
 func RunMigration(db *sql.DB, migrationPath string) {
-	// Buat driver migrate dari koneksi *sql.DB yang sudah ada
 	driver, err := mysql.WithInstance(db, &mysql.Config{})
 	if err != nil {
 		log.Fatal("Gagal membuat driver migration: ", err)
 	}
 
-	// Inisialisasi migrate dengan source file dan driver database
 	m, err := migrate.NewWithDatabaseInstance(
 		"file://"+migrationPath,
 		"mysql",

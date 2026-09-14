@@ -35,7 +35,6 @@ func (s *membershipsService) ValidateRefreshToken(ctx context.Context, userId in
 		return "", constants.ErrTokenExpired
 	}
 
-	//	cek kalo refresh token di db tidak sesuai sama token yang dimasukkan di client
 	if existRefreshToken.RefreshToken != request.Token {
 		return "", constants.ErrInvalidToken
 	}
@@ -45,7 +44,6 @@ func (s *membershipsService) ValidateRefreshToken(ctx context.Context, userId in
 		return "", fmt.Errorf("service get user by id: %w", err)
 	}
 
-	// jika ternyata refresh token sama maka generate jwt untuk mendapatkan access token baru
 	token, err := jwt.CreateToken(int(user.ID), user.Username, s.cfg.Service.SecretKey)
 	if err != nil {
 		return "", fmt.Errorf("service create token: %w", err)

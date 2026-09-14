@@ -16,6 +16,7 @@ type MembershipRepository interface {
 	GetIdRefreshToken(ctx context.Context, request memberships.RefreshTokenRequest) (*memberships.RefreshTokenModel, error)
 	CreateUser(ctx context.Context, model memberships.UserModel) error
 	InsertRefreshToken(ctx context.Context, model memberships.RefreshTokenModel) error
+	DeleteExpiredRefreshTokens(ctx context.Context, userId int, now time.Time) error
 }
 
 type repository struct {

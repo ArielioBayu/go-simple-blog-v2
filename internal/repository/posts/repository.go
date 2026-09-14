@@ -17,6 +17,7 @@ type PostsRepository interface {
 	GetPostById(ctx context.Context, id, userID int) (*posts.Data, error)
 	GetCommentById(ctx context.Context, postId int) ([]posts.GetComment, error)
 	UpdateActivities(ctx context.Context, model posts.ActivityModel) error
+	UpsertActivities(ctx context.Context, model posts.ActivityModel) error
 }
 
 type postsRepository struct {

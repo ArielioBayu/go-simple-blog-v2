@@ -85,9 +85,9 @@ func (r *repository) GetUserByEmail(ctx context.Context, email string) (*members
 }
 
 func (r *repository) CreateUser(ctx context.Context, model memberships.UserModel) error {
-	query := `INSERT INTO users (id, email, password, username, created_at, updated_at, created_by, updated_by)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-	_, err := r.DB.ExecContext(ctx, query, model.ID, model.Email, model.Password, model.Username, model.CreatedAt, model.UpdatedAt,
+	query := `INSERT INTO users (email, password, username, created_at, updated_at, created_by, updated_by)
+	VALUES (?, ?, ?, ?, ?, ?, ?)`
+	_, err := r.DB.ExecContext(ctx, query, model.Email, model.Password, model.Username, model.CreatedAt, model.UpdatedAt,
 		model.CreatedBy, model.UpdatedBy)
 	if err != nil {
 		return fmt.Errorf("repository create user: %w", err)

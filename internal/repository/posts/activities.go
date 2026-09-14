@@ -65,3 +65,18 @@ func (r *postsRepository) UpdateActivities(ctx context.Context, model posts.Acti
 	}
 	return nil
 }
+
+func (r *postsRepository) UpsertActivities(ctx context.Context, model posts.ActivityModel) error {
+	query := `INSERT INTO activities (post_id, user_id, is_liked, created_at, updated_at, created_by, updated_by)
+			VALUES (?, ?, ?, ?, ?, ?, ?)
+			ON DUPLICATE KEY UPDATE
+				is_liked = VALUES(is_liked),
+				updated_at = VALUES(updated_at),
+				updated_by = VALUES(updated_by)`
+	_, err := r.DB.ExecContext(ctx, query, model.PostId, model.UserId, model.IsLiked, model.CreatedAt, model.UpdatedAt,
+		model.CreatedBy, model.UpdatedBy)
+	if err != nil {
+		return fmt.Errorf("Repository UpsertActivities: %w", err)
+	}
+	return nil
+}
