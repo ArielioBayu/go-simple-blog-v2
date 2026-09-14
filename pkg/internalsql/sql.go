@@ -46,9 +46,7 @@ func RunMigration(db *sql.DB, migrationPath string) {
 		log.Fatal("Gagal inisialisasi migration: ", err)
 	}
 
-	// Jalankan semua migration yang belum diaplikasikan (Up)
 	if err := m.Up(); err != nil {
-		// ErrNoChange bukan error nyata — berarti semua migration sudah up-to-date
 		if errors.Is(err, migrate.ErrNoChange) {
 			log.Println("Migration: tidak ada perubahan, semua sudah up-to-date")
 			return

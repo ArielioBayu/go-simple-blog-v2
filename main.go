@@ -4,25 +4,19 @@ import (
 	"log"
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/configs"
-	"github.com/ArielioBayu/go-simple-blog-v2/internal/handlers/memberships"
-	"github.com/ArielioBayu/go-simple-blog-v2/internal/handlers/posts"
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/handlers"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/middleware"
-
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/repository"
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/router"
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/service"
 	"github.com/ArielioBayu/go-simple-blog-v2/pkg/internalsql"
 
 	_ "github.com/go-sql-driver/mysql"
-
-	membershipsRepo "github.com/ArielioBayu/go-simple-blog-v2/internal/repository/memberships"
-	postsRepo "github.com/ArielioBayu/go-simple-blog-v2/internal/repository/posts"
-	membershipsSrv "github.com/ArielioBayu/go-simple-blog-v2/internal/service/memberships"
-	postsSrv "github.com/ArielioBayu/go-simple-blog-v2/internal/service/posts"
 
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
-	r := gin.Default()
-
 	var cfg *configs.Config
 
 	err := configs.Init(
@@ -40,30 +34,29 @@ func main() {
 
 	db, err := internalsql.Connect(cfg.Database.DbSourceName)
 	if err != nil {
-		log.Fatal("Gagal Inisiasi Database", err)
+		log.Fatal("Gagal Inisiasi Database: ", err)
 	}
+	defer db.Close()
 
-	//	Jalankan migration secara otomatis saat startup
+	// Jalankan migration secara otomatis saat startup
 	internalsql.RunMigration(db, "./scripts/migrations")
 
+	// Inisialisasi Modular Application Containers (Registries)
+	repos := repository.InitRepositories(db)
+	services := service.InitServices(repos, cfg)
+	handlersList := handlers.InitHandlers(services, cfg)
+
+	// Setup Gin Router
+	r := gin.Default()
 	r.Use(middleware.CorsMiddleware())
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
 
-	//	Repository
-	membershipsRepo := membershipsRepo.NewMembershipsRepository(db)
-	postsRepo := postsRepo.NewPostsRepository(db)
+	// Setup Routes
+	router.SetupRoutes(r, handlersList)
 
-	//	Service
-	membershipsService := membershipsSrv.NewMembershipsService(cfg, membershipsRepo)
-	postsService := postsSrv.NewPostsService(cfg, postsRepo)
-
-	//	Handler
-	membershipsHandler := memberships.NewHandler(r, membershipsService)
-	membershipsHandler.RegisterRoute()
-
-	postsHandler := posts.NewHandler(r, postsService)
-	postsHandler.RegisterRoute()
-
-	r.Run(cfg.Service.Port)
+	log.Printf("Server running on port %s", cfg.Service.Port)
+	if err := r.Run(cfg.Service.Port); err != nil {
+		log.Fatalf("Failed to run server: %v", err)
+	}
 }
