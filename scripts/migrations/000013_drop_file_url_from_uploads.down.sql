@@ -1,0 +1,1 @@
+ALTER TABLE uploads ADD COLUMN file_url VARCHAR(255) NOT NULL DEFAULT '' AFTER file_path;

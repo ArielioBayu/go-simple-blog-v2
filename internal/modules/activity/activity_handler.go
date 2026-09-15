@@ -68,3 +68,35 @@ func (h *ActivityHandler) InsertUpdateActivities(c *gin.Context) {
 		Message: "success",
 	})
 }
+
+func (h *ActivityHandler) CountLikes(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	postId, err := strconv.Atoi(c.Param("postId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, response.MessageResponse{
+			Status:  http.StatusBadRequest,
+			Message: "Invalid Post Id",
+		})
+		return
+	}
+
+	count, err := h.activityService.CountLikes(ctx, postId)
+	if err != nil {
+		log.Printf("CountLikes failed | error: %v", err)
+		c.JSON(http.StatusInternalServerError, response.MessageResponse{
+			Status:  http.StatusInternalServerError,
+			Message: "Internal server error",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, response.DataResponse{
+		Status:  http.StatusOK,
+		Message: "success get like count",
+		Data: gin.H{
+			"post_id":    postId,
+			"like_count": count,
+		},
+	})
+}

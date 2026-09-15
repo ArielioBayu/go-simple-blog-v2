@@ -6,6 +6,10 @@ import (
 )
 
 func UserRoutes(r *gin.Engine, h *UserHandler) {
-	group := r.Group("/memberships")
-	group.GET("/get-user", middleware.AuthMiddlewareToken(), h.GetUser)
+	group := r.Group("/accounts")
+	group.Use(middleware.AuthMiddlewareToken())
+
+	group.GET("/user", h.GetUser)
+	group.GET("/profile", h.GetProfile)
+	group.PUT("/edit/profile", h.UpdateProfile)
 }

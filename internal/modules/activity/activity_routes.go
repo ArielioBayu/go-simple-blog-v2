@@ -9,4 +9,5 @@ func ActivityRoutes(r *gin.Engine, h *ActivityHandler) {
 	group := r.Group("/posts")
 	group.Use(middleware.AuthMiddlewareToken())
 	group.POST("/user-activity/:postId", h.InsertUpdateActivities)
+	group.GET("/like-count/:postId", h.CountLikes)
 }

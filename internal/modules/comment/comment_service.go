@@ -17,6 +17,7 @@ type PostChecker interface {
 
 type CommentService interface {
 	CreateComment(ctx context.Context, postId, userId int, request CommentRequest) error
+	CountComments(ctx context.Context, postId int) (int, error)
 }
 
 type commentService struct {
@@ -61,4 +62,18 @@ func (s *commentService) CreateComment(ctx context.Context, postId, userId int, 
 	}
 
 	return nil
+}
+
+func (s *commentService) CountComments(ctx context.Context, postId int) (int, error) {
+	if s.postChecker != nil {
+		exists, err := s.postChecker.CheckPostExists(ctx, postId)
+		if err != nil {
+			return 0, err
+		}
+		if !exists {
+			return 0, constants.ErrPostNotFound
+		}
+	}
+
+	return s.commentRepo.CountCommentsByPostID(ctx, postId)
 }

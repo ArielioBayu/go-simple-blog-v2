@@ -7,6 +7,7 @@ import (
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/auth"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/comment"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/post"
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/upload"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/user"
 )
 
@@ -16,6 +17,7 @@ type Repositories struct {
 	Post     post.PostRepository
 	Comment  comment.CommentRepository
 	Activity activity.ActivityRepository
+	Upload   upload.UploadRepository
 }
 
 func InitRepositories(db *sql.DB) *Repositories {
@@ -25,5 +27,6 @@ func InitRepositories(db *sql.DB) *Repositories {
 		Post:     post.NewPostRepository(db),
 		Comment:  comment.NewCommentRepository(db),
 		Activity: activity.NewActivityRepository(db),
+		Upload:   upload.NewUploadRepository(db),
 	}
 }

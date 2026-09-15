@@ -12,6 +12,7 @@ import (
 
 type ActivityService interface {
 	InsertUpdateActivities(ctx context.Context, postId, userId int, request ActivityRequest) error
+	CountLikes(ctx context.Context, postId int) (int, error)
 }
 
 type activityService struct {
@@ -44,4 +45,8 @@ func (s *activityService) InsertUpdateActivities(ctx context.Context, postId, us
 	}
 
 	return nil
+}
+
+func (s *activityService) CountLikes(ctx context.Context, postId int) (int, error) {
+	return s.activityRepo.CountLikedByPostID(ctx, postId)
 }

@@ -9,4 +9,5 @@ func CommentRoutes(r *gin.Engine, h *CommentHandler) {
 	group := r.Group("/posts")
 	group.Use(middleware.AuthMiddlewareToken())
 	group.POST("/create-comment/:postId", h.CreateComment)
+	group.GET("/comment-count/:postId", h.CountComments)
 }

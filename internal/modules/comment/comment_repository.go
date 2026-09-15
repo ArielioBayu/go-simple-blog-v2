@@ -9,6 +9,7 @@ import (
 type CommentRepository interface {
 	CreateComment(ctx context.Context, model CommentModel) error
 	GetCommentById(ctx context.Context, postId int) ([]GetComment, error)
+	CountCommentsByPostID(ctx context.Context, postId int) (int, error)
 }
 
 type commentRepository struct {
@@ -65,4 +66,17 @@ func (r *commentRepository) CreateComment(ctx context.Context, model CommentMode
 	}
 
 	return nil
+}
+
+func (r *commentRepository) CountCommentsByPostID(ctx context.Context, postId int) (int, error) {
+	query := `SELECT COUNT(id) FROM comments WHERE post_id = ?`
+	row := r.db.QueryRowContext(ctx, query, postId)
+
+	var count int
+	err := row.Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("repository CountCommentsByPostID: %w", err)
+	}
+
+	return count, nil
 }

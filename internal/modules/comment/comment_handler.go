@@ -76,3 +76,41 @@ func (h *CommentHandler) CreateComment(c *gin.Context) {
 		Message: "success create comment",
 	})
 }
+
+func (h *CommentHandler) CountComments(c *gin.Context) {
+	postId, err := strconv.Atoi(c.Param("postId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, response.MessageResponse{
+			Status:  http.StatusBadRequest,
+			Message: "Invalid post id",
+		})
+		return
+	}
+
+	count, err := h.commentService.CountComments(c.Request.Context(), postId)
+	if err != nil {
+		if errors.Is(err, constants.ErrPostNotFound) {
+			c.JSON(http.StatusNotFound, response.MessageResponse{
+				Status:  http.StatusNotFound,
+				Message: err.Error(),
+			})
+			return
+		}
+
+		log.Printf("CountComments error: %v", err)
+		c.JSON(http.StatusInternalServerError, response.MessageResponse{
+			Status:  http.StatusInternalServerError,
+			Message: "Internal server error",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, response.DataResponse{
+		Status:  http.StatusOK,
+		Message: "success get comment count",
+		Data: gin.H{
+			"post_id":       postId,
+			"comment_count": count,
+		},
+	})
+}

@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS uploads (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    original_filename VARCHAR(255) NOT NULL,
+    file_path VARCHAR(255) NOT NULL,
+    file_url VARCHAR(255) NOT NULL,
+    mime_type VARCHAR(50) NOT NULL,
+    file_size BIGINT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);

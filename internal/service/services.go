@@ -6,6 +6,7 @@ import (
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/auth"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/comment"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/post"
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/upload"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/user"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/repository"
 )
@@ -16,6 +17,7 @@ type Services struct {
 	Post     post.PostService
 	Comment  comment.CommentService
 	Activity activity.ActivityService
+	Upload   upload.UploadService
 }
 
 func InitServices(repos *repository.Repositories, cfg *configs.Config) *Services {
@@ -25,5 +27,6 @@ func InitServices(repos *repository.Repositories, cfg *configs.Config) *Services
 		Post:     post.NewPostService(cfg, repos.Post, repos.Comment, repos.Activity),
 		Comment:  comment.NewCommentService(cfg, repos.Comment, repos.Post),
 		Activity: activity.NewActivityService(cfg, repos.Activity),
+		Upload:   upload.NewUploadService(cfg, repos.Upload),
 	}
 }

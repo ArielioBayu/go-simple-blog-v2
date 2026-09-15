@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/configs"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/handlers"
@@ -41,6 +42,11 @@ func main() {
 	// Jalankan migration secara otomatis saat startup
 	internalsql.RunMigration(db, "./scripts/migrations")
 
+	// Buat direktori upload jika belum ada
+	if err := os.MkdirAll("./uploads", os.ModePerm); err != nil {
+		log.Fatalf("Gagal membuat direktori uploads: %v", err)
+	}
+
 	// Inisialisasi Modular Application Containers (Registries)
 	repos := repository.InitRepositories(db)
 	services := service.InitServices(repos, cfg)
@@ -51,6 +57,9 @@ func main() {
 	r.Use(middleware.CorsMiddleware())
 	r.Use(gin.Logger())
 	r.Use(gin.Recovery())
+
+	// Static route untuk file upload
+	r.Static("/uploads", "./uploads")
 
 	// Setup Routes
 	router.SetupRoutes(r, handlersList)
