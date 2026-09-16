@@ -26,9 +26,9 @@ func NewPostRepository(db *sql.DB) PostRepository {
 }
 
 func (r *postRepository) CreatePost(ctx context.Context, model PostModel) error {
-	query := `INSERT INTO posts (user_id, post_title, post_content, post_hashtags, created_at, updated_at,
-				created_by, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-	_, err := r.db.ExecContext(ctx, query, model.UserId, model.PostTitle, model.PostContent, model.PostHashtags, model.CreatedAt, model.UpdatedAt,
+	query := `INSERT INTO posts (user_id, post_title, post_content, post_hashtags, upload_id, created_at, updated_at,
+				created_by, updated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	_, err := r.db.ExecContext(ctx, query, model.UserId, model.PostTitle, model.PostContent, model.PostHashtags, model.UploadID, model.CreatedAt, model.UpdatedAt,
 		model.CreatedBy, model.UpdatedBy)
 	if err != nil {
 		return fmt.Errorf("repository CreatePost: %w", err)
@@ -39,10 +39,13 @@ func (r *postRepository) CreatePost(ctx context.Context, model PostModel) error 
 
 func (r *postRepository) GetAllPost(ctx context.Context, limit, offset, userID int) (GetAllPostResponse, error) {
 	var response GetAllPostResponse
-	query := `SELECT p.id, p.user_id, u.username, p.post_title, p.post_content, p.post_hashtags, COALESCE(act.is_liked, false), p.created_at, p.updated_at
+	query := `SELECT p.id, p.user_id, u.username, p.post_title, p.post_content, p.post_hashtags, 
+				COALESCE(act.is_liked, false), p.created_at, p.updated_at,
+				COALESCE(up.file_path, ''), COALESCE(up.file_type, ''), COALESCE(up.file_size, 0)
 				FROM posts as p
 				JOIN users as u ON p.user_id = u.id
 				LEFT JOIN activities as act ON p.id = act.post_id AND act.user_id = ?
+				LEFT JOIN uploads as up ON (p.upload_id = up.id OR (p.upload_id IS NULL AND p.post_content LIKE CONCAT('%', up.system_filename, '%')))
 				ORDER BY p.created_at DESC 
 				LIMIT ? OFFSET ?`
 	rows, err := r.db.QueryContext(ctx, query, userID, limit, offset)
@@ -56,6 +59,8 @@ func (r *postRepository) GetAllPost(ctx context.Context, limit, offset, userID i
 		var username string
 		var isliked bool
 		var model PostModel
+		var filePath, fileType string
+		var fileSize int64
 
 		err = rows.Scan(
 			&model.ID,
@@ -67,6 +72,9 @@ func (r *postRepository) GetAllPost(ctx context.Context, limit, offset, userID i
 			&isliked,
 			&model.CreatedAt,
 			&model.UpdatedAt,
+			&filePath,
+			&fileType,
+			&fileSize,
 		)
 		if err != nil {
 			return response, fmt.Errorf("repository GetAllPost: %w", err)
@@ -80,6 +88,10 @@ func (r *postRepository) GetAllPost(ctx context.Context, limit, offset, userID i
 			PostContent:  model.PostContent,
 			PostHashtags: strings.Split(model.PostHashtags, ","),
 			IsLiked:      isliked,
+			FilePath:     filePath,
+			Filepath:     filePath,
+			FileType:     fileType,
+			FileSize:     fileSize,
 			UpdatedAt:    model.UpdatedAt,
 			CreatedAt:    model.CreatedAt,
 		})
@@ -94,18 +106,23 @@ func (r *postRepository) GetAllPost(ctx context.Context, limit, offset, userID i
 }
 
 func (r *postRepository) GetPostById(ctx context.Context, id, userID int) (*Data, error) {
-	query := `SELECT p.id, p.user_id, u.username, p.post_title, p.post_content, p.post_hashtags, COALESCE(act.is_liked, false), p.created_at, p.updated_at 
+	query := `SELECT p.id, p.user_id, u.username, p.post_title, p.post_content, p.post_hashtags, 
+				COALESCE(act.is_liked, false), p.created_at, p.updated_at,
+				COALESCE(up.file_path, ''), COALESCE(up.file_type, ''), COALESCE(up.file_size, 0)
 				FROM posts as p
 				JOIN users as u ON p.user_id = u.id
 				LEFT JOIN activities as act ON p.id = act.post_id AND act.user_id = ?
+				LEFT JOIN uploads as up ON (p.upload_id = up.id OR (p.upload_id IS NULL AND p.post_content LIKE CONCAT('%', up.system_filename, '%')))
 				WHERE p.id = ?
 				LIMIT 1`
 
 	row := r.db.QueryRowContext(ctx, query, userID, id)
 	var (
-		model    PostModel
-		username string
-		isliked  bool
+		model              PostModel
+		username           string
+		isliked            bool
+		filePath, fileType string
+		fileSize           int64
 	)
 	err := row.Scan(
 		&model.ID,
@@ -117,6 +134,9 @@ func (r *postRepository) GetPostById(ctx context.Context, id, userID int) (*Data
 		&isliked,
 		&model.CreatedAt,
 		&model.UpdatedAt,
+		&filePath,
+		&fileType,
+		&fileSize,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -133,6 +153,10 @@ func (r *postRepository) GetPostById(ctx context.Context, id, userID int) (*Data
 		PostContent:  model.PostContent,
 		PostHashtags: strings.Split(model.PostHashtags, ","),
 		IsLiked:      isliked,
+		FilePath:     filePath,
+		Filepath:     filePath,
+		FileType:     fileType,
+		FileSize:     fileSize,
 		CreatedAt:    model.CreatedAt,
 		UpdatedAt:    model.UpdatedAt,
 	}

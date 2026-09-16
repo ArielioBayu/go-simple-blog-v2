@@ -11,6 +11,7 @@ type UploadRepository interface {
 	CreateUpload(ctx context.Context, model *UploadModel) error
 	GetUploadsByUserID(ctx context.Context, userID int) ([]UploadModel, error)
 	GetUploadByID(ctx context.Context, id int) (*UploadModel, error)
+	GetUploadByPathOrFilename(ctx context.Context, identifier string) (*UploadModel, error)
 }
 
 type uploadRepository struct {
@@ -102,6 +103,33 @@ func (r *uploadRepository) GetUploadByID(ctx context.Context, id int) (*UploadMo
 			return nil, nil
 		}
 		return nil, fmt.Errorf("repository GetUploadByID: %w", err)
+	}
+
+	return &item, nil
+}
+
+func (r *uploadRepository) GetUploadByPathOrFilename(ctx context.Context, identifier string) (*UploadModel, error) {
+	query := `SELECT id, user_id, file_name, system_filename, file_path, file_type, file_size, created_at
+	          FROM uploads
+	          WHERE file_path = ? OR system_filename = ? OR ? LIKE CONCAT('%', system_filename, '%')
+	          LIMIT 1`
+	row := r.db.QueryRowContext(ctx, query, identifier, identifier, identifier)
+
+	var item UploadModel
+	if err := row.Scan(
+		&item.ID,
+		&item.UserID,
+		&item.FileName,
+		&item.SystemFilename,
+		&item.FilePath,
+		&item.FileType,
+		&item.FileSize,
+		&item.CreatedAt,
+	); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("repository GetUploadByPathOrFilename: %w", err)
 	}
 
 	return &item, nil

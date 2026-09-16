@@ -11,6 +11,7 @@ import (
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/configs"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/activity"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/comment"
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/upload"
 	"github.com/ArielioBayu/go-simple-blog-v2/pkg/utils"
 )
 
@@ -25,6 +26,7 @@ type postService struct {
 	postRepo     PostRepository
 	commentRepo  comment.CommentRepository
 	activityRepo activity.ActivityRepository
+	uploadRepo   upload.UploadRepository
 }
 
 func NewPostService(
@@ -32,17 +34,39 @@ func NewPostService(
 	postRepo PostRepository,
 	commentRepo comment.CommentRepository,
 	activityRepo activity.ActivityRepository,
+	uploadRepo upload.UploadRepository,
 ) PostService {
 	return &postService{
 		cfg:          cfg,
 		postRepo:     postRepo,
 		commentRepo:  commentRepo,
 		activityRepo: activityRepo,
+		uploadRepo:   uploadRepo,
 	}
 }
 
 func (s *postService) CreatePost(ctx context.Context, userId int, request PostRequest) error {
 	postHashtags := strings.Join(request.PostHashtags, ",")
+
+	var uploadID *int64 = request.UploadID
+	targetPath := request.FilePath
+	if targetPath == "" {
+		targetPath = request.Filepath
+	}
+
+	// Jika uploadID belum terisi, coba deteksi dari file_path / filepath atau url dalam post_content
+	if uploadID == nil && s.uploadRepo != nil {
+		lookupQuery := targetPath
+		if lookupQuery == "" {
+			lookupQuery = request.PostContent
+		}
+		if lookupQuery != "" {
+			item, err := s.uploadRepo.GetUploadByPathOrFilename(ctx, lookupQuery)
+			if err == nil && item != nil {
+				uploadID = &item.ID
+			}
+		}
+	}
 
 	now := time.Now()
 	model := PostModel{
@@ -50,6 +74,7 @@ func (s *postService) CreatePost(ctx context.Context, userId int, request PostRe
 		PostTitle:    request.PostTitle,
 		PostContent:  request.PostContent,
 		PostHashtags: postHashtags,
+		UploadID:     uploadID,
 		CreatedAt:    utils.JsonTime(now),
 		UpdatedAt:    utils.JsonTime(now),
 		CreatedBy:    strconv.Itoa(userId),
@@ -100,17 +125,7 @@ func (s *postService) GetPostById(ctx context.Context, id, userID int) (*GetPost
 	}
 
 	result := &GetPostResponse{
-		DetailPost: Data{
-			ID:           data.ID,
-			UserId:       data.UserId,
-			Username:     data.Username,
-			PostTitle:    data.PostTitle,
-			PostContent:  data.PostContent,
-			PostHashtags: data.PostHashtags,
-			IsLiked:      data.IsLiked,
-			CreatedAt:    data.CreatedAt,
-			UpdatedAt:    data.UpdatedAt,
-		},
+		DetailPost: *data,
 		LikedCount: counts,
 		Comments:   comments,
 	}

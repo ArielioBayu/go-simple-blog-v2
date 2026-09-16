@@ -9,6 +9,9 @@ type PostRequest struct {
 	PostTitle    string   `json:"post_title"`
 	PostContent  string   `json:"post_content"`
 	PostHashtags []string `json:"post_hashtags"`
+	UploadID     *int64   `json:"upload_id,omitempty"`
+	FilePath     string   `json:"file_path,omitempty"`
+	Filepath     string   `json:"filepath,omitempty"`
 }
 
 type PostModel struct {
@@ -17,6 +20,7 @@ type PostModel struct {
 	PostTitle    string         `column:"post_title"`
 	PostContent  string         `column:"post_content"`
 	PostHashtags string         `column:"post_hashtags"`
+	UploadID     *int64         `column:"upload_id"`
 	CreatedAt    utils.JsonTime `column:"created_at"`
 	UpdatedAt    utils.JsonTime `column:"updated_at"`
 	CreatedBy    string         `column:"created_by"`
@@ -37,6 +41,10 @@ type (
 		PostContent  string         `json:"post_content" column:"post_content"`
 		PostHashtags []string       `json:"post_hashtags" column:"post_hashtags"`
 		IsLiked      bool           `json:"is_liked" column:"is_liked"`
+		FilePath     string         `json:"file_path"`
+		Filepath     string         `json:"filepath"`
+		FileType     string         `json:"file_type"`
+		FileSize     int64          `json:"file_size"`
 		CreatedAt    utils.JsonTime `json:"created_at" column:"created_at"`
 		UpdatedAt    utils.JsonTime `json:"updated_at" column:"updated_at"`
 	}

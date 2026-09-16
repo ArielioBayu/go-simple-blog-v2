@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/configs"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/constants"
@@ -82,6 +83,43 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 	profile, err := h.userService.GetProfile(ctx, userId)
 	if err != nil {
 		log.Printf("GetProfile error: %v", err)
+		c.JSON(http.StatusInternalServerError, response.MessageResponse{
+			Status:  http.StatusInternalServerError,
+			Message: "internal server error",
+		})
+		return
+	}
+
+	if profile == nil {
+		c.JSON(http.StatusNotFound, response.MessageResponse{
+			Status:  http.StatusNotFound,
+			Message: "user not found",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, response.DataResponse{
+		Status:  http.StatusOK,
+		Message: "success get user profile",
+		Data:    profile,
+	})
+}
+
+func (h *UserHandler) GetProfileByID(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	targetUserID, err := strconv.Atoi(c.Param("id"))
+	if err != nil || targetUserID <= 0 {
+		c.JSON(http.StatusBadRequest, response.MessageResponse{
+			Status:  http.StatusBadRequest,
+			Message: "invalid user id",
+		})
+		return
+	}
+
+	profile, err := h.userService.GetProfileByID(ctx, targetUserID)
+	if err != nil {
+		log.Printf("GetProfileByID error: %v", err)
 		c.JSON(http.StatusInternalServerError, response.MessageResponse{
 			Status:  http.StatusInternalServerError,
 			Message: "internal server error",

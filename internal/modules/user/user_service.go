@@ -11,6 +11,7 @@ import (
 type UserService interface {
 	GetUserById(ctx context.Context, id int) (*UserModel, error)
 	GetProfile(ctx context.Context, id int) (*ProfileResponse, error)
+	GetProfileByID(ctx context.Context, id int) (*ProfileResponse, error)
 	UpdateProfile(ctx context.Context, id int, req UpdateProfileRequest) (*ProfileResponse, error)
 }
 
@@ -31,6 +32,10 @@ func (s *userService) GetUserById(ctx context.Context, id int) (*UserModel, erro
 }
 
 func (s *userService) GetProfile(ctx context.Context, id int) (*ProfileResponse, error) {
+	return s.userRepo.GetProfile(ctx, id)
+}
+
+func (s *userService) GetProfileByID(ctx context.Context, id int) (*ProfileResponse, error) {
 	return s.userRepo.GetProfile(ctx, id)
 }
 

@@ -24,7 +24,7 @@ func InitServices(repos *repository.Repositories, cfg *configs.Config) *Services
 	return &Services{
 		Auth:     auth.NewAuthService(cfg, repos.Auth, repos.User),
 		User:     user.NewUserService(cfg, repos.User),
-		Post:     post.NewPostService(cfg, repos.Post, repos.Comment, repos.Activity),
+		Post:     post.NewPostService(cfg, repos.Post, repos.Comment, repos.Activity, repos.Upload),
 		Comment:  comment.NewCommentService(cfg, repos.Comment, repos.Post),
 		Activity: activity.NewActivityService(cfg, repos.Activity),
 		Upload:   upload.NewUploadService(cfg, repos.Upload),
