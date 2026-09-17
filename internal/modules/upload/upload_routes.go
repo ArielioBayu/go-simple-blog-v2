@@ -5,7 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func UploadRoutes(r *gin.Engine, h *UploadHandler) {
+func UploadRoutes(r *gin.RouterGroup, h *UploadHandler) {
 	group := r.Group("/upload")
 	group.Use(middleware.AuthMiddlewareToken())
 

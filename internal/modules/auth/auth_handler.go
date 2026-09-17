@@ -191,3 +191,20 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 		},
 	})
 }
+
+func (h *AuthHandler) SignOut(c *gin.Context) {
+	ctx := c.Request.Context()
+	userId := c.GetInt("id")
+
+	if userId > 0 {
+		_ = h.authService.SignOut(ctx, userId)
+	}
+
+	utils.ClearCookie(c, "access_token")
+
+	c.JSON(http.StatusOK, response.MessageResponse{
+		Status:  http.StatusOK,
+		Message: "success logout",
+	})
+}
+

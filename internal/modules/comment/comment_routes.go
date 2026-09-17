@@ -5,7 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func CommentRoutes(r *gin.Engine, h *CommentHandler) {
+func CommentRoutes(r *gin.RouterGroup, h *CommentHandler) {
 	group := r.Group("/posts")
 	group.Use(middleware.AuthMiddlewareToken())
 	group.POST("/create-comment/:postId", h.CreateComment)

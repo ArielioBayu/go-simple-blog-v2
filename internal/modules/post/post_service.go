@@ -2,13 +2,17 @@ package post
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/configs"
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/constants"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/activity"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/comment"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/upload"
@@ -18,7 +22,9 @@ import (
 type PostService interface {
 	CreatePost(ctx context.Context, userId int, request PostRequest) error
 	GetAllPost(ctx context.Context, pageSize, pageIndex, userID int) (GetAllPostResponse, error)
+	GetPostsByUserID(ctx context.Context, targetUserID, currentUserID, pageSize, pageIndex int) (GetAllPostResponse, error)
 	GetPostById(ctx context.Context, id, userID int) (*GetPostResponse, error)
+	DeletePost(ctx context.Context, postId, userId int) error
 }
 
 type postService struct {
@@ -47,34 +53,14 @@ func NewPostService(
 
 func (s *postService) CreatePost(ctx context.Context, userId int, request PostRequest) error {
 	postHashtags := strings.Join(request.PostHashtags, ",")
-
-	var uploadID *int64 = request.UploadID
-	targetPath := request.FilePath
-	if targetPath == "" {
-		targetPath = request.Filepath
-	}
-
-	// Jika uploadID belum terisi, coba deteksi dari file_path / filepath atau url dalam post_content
-	if uploadID == nil && s.uploadRepo != nil {
-		lookupQuery := targetPath
-		if lookupQuery == "" {
-			lookupQuery = request.PostContent
-		}
-		if lookupQuery != "" {
-			item, err := s.uploadRepo.GetUploadByPathOrFilename(ctx, lookupQuery)
-			if err == nil && item != nil {
-				uploadID = &item.ID
-			}
-		}
-	}
-
 	now := time.Now()
+
 	model := PostModel{
 		UserId:       userId,
 		PostTitle:    request.PostTitle,
 		PostContent:  request.PostContent,
 		PostHashtags: postHashtags,
-		UploadID:     uploadID,
+		UploadID:     request.UploadID,
 		CreatedAt:    utils.JsonTime(now),
 		UpdatedAt:    utils.JsonTime(now),
 		CreatedBy:    strconv.Itoa(userId),
@@ -97,6 +83,18 @@ func (s *postService) GetAllPost(ctx context.Context, pageSize, pageIndex, userI
 	response, err := s.postRepo.GetAllPost(ctx, limit, offset, userID)
 	if err != nil {
 		return response, fmt.Errorf("service GetAllPost: %w", err)
+	}
+
+	return response, nil
+}
+
+func (s *postService) GetPostsByUserID(ctx context.Context, targetUserID, currentUserID, pageSize, pageIndex int) (GetAllPostResponse, error) {
+	limit := pageSize
+	offset := pageSize * (pageIndex - 1)
+
+	response, err := s.postRepo.GetPostsByUserID(ctx, targetUserID, currentUserID, limit, offset)
+	if err != nil {
+		return response, fmt.Errorf("service GetPostsByUserID: %w", err)
 	}
 
 	return response, nil
@@ -131,4 +129,57 @@ func (s *postService) GetPostById(ctx context.Context, id, userID int) (*GetPost
 	}
 
 	return result, nil
+}
+
+func (s *postService) DeletePost(ctx context.Context, postId, userId int) error {
+	post, err := s.postRepo.GetPostById(ctx, postId, userId)
+	if err != nil {
+		if errors.Is(err, constants.ErrPostNotFound) {
+			return constants.ErrPostNotFound
+		}
+		return fmt.Errorf("service DeletePost: %w", err)
+	}
+
+	if post.UserId != userId {
+		return constants.ErrForbidden
+	}
+
+	var uploadItem *upload.UploadModel
+	if s.uploadRepo != nil {
+		if post.UploadID != nil && *post.UploadID > 0 {
+			uploadItem, err = s.uploadRepo.GetUploadByID(ctx, int(*post.UploadID))
+			if err != nil {
+				log.Printf("warning: failed to fetch upload record %d: %v", *post.UploadID, err)
+			}
+		} else if post.FilePath != "" {
+			uploadItem, err = s.uploadRepo.GetUploadByPathOrFilename(ctx, post.FilePath)
+			if err != nil {
+				log.Printf("warning: failed to fetch upload record by path %s: %v", post.FilePath, err)
+			}
+		}
+	}
+
+	err = s.postRepo.DeletePost(ctx, postId)
+	if err != nil {
+		return fmt.Errorf("service DeletePost: %w", err)
+	}
+
+	if uploadItem != nil {
+		if err := s.uploadRepo.DeleteUpload(ctx, int(uploadItem.ID)); err != nil {
+			log.Printf("warning: failed to delete upload record %d: %v", uploadItem.ID, err)
+		}
+		if uploadItem.FilePath != "" {
+			targetFile := filepath.FromSlash(uploadItem.FilePath)
+			if err := os.Remove(targetFile); err != nil && !errors.Is(err, os.ErrNotExist) {
+				log.Printf("warning: failed to delete image file %s: %v", targetFile, err)
+			}
+		}
+	} else if post.FilePath != "" {
+		targetFile := filepath.FromSlash(post.FilePath)
+		if err := os.Remove(targetFile); err != nil && !errors.Is(err, os.ErrNotExist) {
+			log.Printf("warning: failed to delete image file %s: %v", targetFile, err)
+		}
+	}
+
+	return nil
 }

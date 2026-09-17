@@ -98,3 +98,4 @@ func ClearCookie(c *gin.Context, name string) {
 
 	http.SetCookie(c.Writer, cookie)
 }
+

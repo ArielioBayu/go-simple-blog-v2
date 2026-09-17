@@ -5,7 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func ActivityRoutes(r *gin.Engine, h *ActivityHandler) {
+func ActivityRoutes(r *gin.RouterGroup, h *ActivityHandler) {
 	group := r.Group("/posts")
 	group.Use(middleware.AuthMiddlewareToken())
 	group.POST("/user-activity/:postId", h.InsertUpdateActivities)

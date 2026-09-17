@@ -11,11 +11,21 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func registerModuleRoutes(group *gin.RouterGroup, h *handlers.Handlers) {
+	auth.AuthRoutes(group, h.Auth)
+	user.UserRoutes(group, h.User)
+	post.PostRoutes(group, h.Post)
+	comment.CommentRoutes(group, h.Comment)
+	activity.ActivityRoutes(group, h.Activity)
+	upload.UploadRoutes(group, h.Upload)
+}
+
 func SetupRoutes(r *gin.Engine, h *handlers.Handlers) {
-	auth.AuthRoutes(r, h.Auth)
-	user.UserRoutes(r, h.User)
-	post.PostRoutes(r, h.Post)
-	comment.CommentRoutes(r, h.Comment)
-	activity.ActivityRoutes(r, h.Activity)
-	upload.UploadRoutes(r, h.Upload)
+	// Base URL Group: /api/v1
+	apiV1 := r.Group("/api/v1")
+	registerModuleRoutes(apiV1, h)
+
+	// Fallback alias root group for backward compatibility
+	rootGroup := r.Group("")
+	registerModuleRoutes(rootGroup, h)
 }

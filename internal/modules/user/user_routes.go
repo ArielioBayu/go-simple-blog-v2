@@ -5,7 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func UserRoutes(r *gin.Engine, h *UserHandler) {
+func UserRoutes(r *gin.RouterGroup, h *UserHandler) {
 	group := r.Group("/accounts")
 	group.Use(middleware.AuthMiddlewareToken())
 

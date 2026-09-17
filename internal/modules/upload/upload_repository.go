@@ -12,6 +12,7 @@ type UploadRepository interface {
 	GetUploadsByUserID(ctx context.Context, userID int) ([]UploadModel, error)
 	GetUploadByID(ctx context.Context, id int) (*UploadModel, error)
 	GetUploadByPathOrFilename(ctx context.Context, identifier string) (*UploadModel, error)
+	DeleteUpload(ctx context.Context, id int) error
 }
 
 type uploadRepository struct {
@@ -133,4 +134,13 @@ func (r *uploadRepository) GetUploadByPathOrFilename(ctx context.Context, identi
 	}
 
 	return &item, nil
+}
+
+func (r *uploadRepository) DeleteUpload(ctx context.Context, id int) error {
+	query := `DELETE FROM uploads WHERE id = ?`
+	_, err := r.db.ExecContext(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("repository DeleteUpload: %w", err)
+	}
+	return nil
 }

@@ -5,11 +5,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func PostRoutes(r *gin.Engine, h *PostHandler) {
+func PostRoutes(r *gin.RouterGroup, h *PostHandler) {
 	group := r.Group("/posts")
 	group.Use(middleware.AuthMiddlewareToken())
 
-	group.POST("/create-post", h.CreatePost)
-	group.GET("/get-all-post", h.GetAllPost)
-	group.GET("/get-post-by-id/:postId", h.GetPostById)
+	group.POST("", h.CreatePost)
+	group.GET("", h.GetAllPost)
+	group.GET("/:postId", h.GetPostById)
+	group.DELETE("/:postId", h.DeletePost)
+	group.GET("/user/:userId", h.GetPostsByUserID)
 }

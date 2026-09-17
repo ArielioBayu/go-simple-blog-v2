@@ -13,6 +13,7 @@ type AuthRepository interface {
 	GetRefreshToken(ctx context.Context, userId int, now time.Time) (*RefreshTokenModel, error)
 	GetIdRefreshToken(ctx context.Context, request RefreshTokenRequest) (*RefreshTokenModel, error)
 	DeleteExpiredRefreshTokens(ctx context.Context, userId int, now time.Time) error
+	DeleteRefreshTokenByUserId(ctx context.Context, userId int) error
 }
 
 type authRepository struct {
@@ -84,6 +85,15 @@ func (r *authRepository) DeleteExpiredRefreshTokens(ctx context.Context, userId 
 	_, err := r.db.ExecContext(ctx, query, userId, now)
 	if err != nil {
 		return fmt.Errorf("repository delete expired refresh tokens: %w", err)
+	}
+	return nil
+}
+
+func (r *authRepository) DeleteRefreshTokenByUserId(ctx context.Context, userId int) error {
+	query := `DELETE FROM refresh_tokens WHERE user_id = ?`
+	_, err := r.db.ExecContext(ctx, query, userId)
+	if err != nil {
+		return fmt.Errorf("repository delete refresh token by user id: %w", err)
 	}
 	return nil
 }

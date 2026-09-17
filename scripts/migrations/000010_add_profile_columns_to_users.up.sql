@@ -1,4 +1,4 @@
 ALTER TABLE users 
-ADD COLUMN bio VARCHAR(255) DEFAULT 'Creator & Storyteller on SimpleBlog' AFTER email,
+ADD COLUMN bio VARCHAR(255) NULL AFTER email,
 ADD COLUMN avatar_url VARCHAR(500) NULL AFTER bio,
 ADD COLUMN banner_url VARCHAR(500) NULL AFTER avatar_url;

@@ -8,6 +8,7 @@ var (
 	ErrUsernameOrEmailAlreadyExists = errors.New("Username or Email Already Exists!")
 	ErrMissingToken                 = errors.New("Missing Token")
 	ErrUnauthorized                 = errors.New("Unauthorized")
+	ErrForbidden                    = errors.New("forbidden")
 
 	// Not Found
 	ErrDataNotFound         = errors.New("Data Not Found")

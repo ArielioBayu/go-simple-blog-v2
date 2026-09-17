@@ -13,7 +13,9 @@ import (
 type PostRepository interface {
 	CreatePost(ctx context.Context, model PostModel) error
 	GetAllPost(ctx context.Context, limit, offset, userID int) (GetAllPostResponse, error)
+	GetPostsByUserID(ctx context.Context, targetUserID, currentUserID, limit, offset int) (GetAllPostResponse, error)
 	GetPostById(ctx context.Context, id, userID int) (*Data, error)
+	DeletePost(ctx context.Context, id int) error
 	CheckPostExists(ctx context.Context, id int) (bool, error)
 }
 
@@ -39,9 +41,10 @@ func (r *postRepository) CreatePost(ctx context.Context, model PostModel) error 
 
 func (r *postRepository) GetAllPost(ctx context.Context, limit, offset, userID int) (GetAllPostResponse, error) {
 	var response GetAllPostResponse
-	query := `SELECT p.id, p.user_id, u.username, p.post_title, p.post_content, p.post_hashtags, 
+	query := `SELECT p.id, p.user_id, u.username, COALESCE(u.avatar_url, ''), p.post_title, p.post_content, p.post_hashtags, 
 				COALESCE(act.is_liked, false), p.created_at, p.updated_at,
-				COALESCE(up.file_path, ''), COALESCE(up.file_type, ''), COALESCE(up.file_size, 0)
+				COALESCE(up.file_path, ''), COALESCE(up.file_type, ''), COALESCE(up.file_size, 0),
+				COALESCE(p.upload_id, up.id, 0)
 				FROM posts as p
 				JOIN users as u ON p.user_id = u.id
 				LEFT JOIN activities as act ON p.id = act.post_id AND act.user_id = ?
@@ -56,16 +59,18 @@ func (r *postRepository) GetAllPost(ctx context.Context, limit, offset, userID i
 
 	data := make([]Data, 0)
 	for rows.Next() {
-		var username string
+		var username, avatarURL string
 		var isliked bool
 		var model PostModel
 		var filePath, fileType string
 		var fileSize int64
+		var uploadID int64
 
 		err = rows.Scan(
 			&model.ID,
 			&model.UserId,
 			&username,
+			&avatarURL,
 			&model.PostTitle,
 			&model.PostContent,
 			&model.PostHashtags,
@@ -75,19 +80,107 @@ func (r *postRepository) GetAllPost(ctx context.Context, limit, offset, userID i
 			&filePath,
 			&fileType,
 			&fileSize,
+			&uploadID,
 		)
 		if err != nil {
 			return response, fmt.Errorf("repository GetAllPost: %w", err)
+		}
+
+		var uploadIDPtr *int64
+		if uploadID > 0 {
+			uploadIDPtr = &uploadID
 		}
 
 		data = append(data, Data{
 			ID:           model.ID,
 			UserId:       model.UserId,
 			Username:     username,
+			AvatarURL:    avatarURL,
 			PostTitle:    model.PostTitle,
 			PostContent:  model.PostContent,
 			PostHashtags: strings.Split(model.PostHashtags, ","),
 			IsLiked:      isliked,
+			UploadID:     uploadIDPtr,
+			FilePath:     filePath,
+			Filepath:     filePath,
+			FileType:     fileType,
+			FileSize:     fileSize,
+			UpdatedAt:    model.UpdatedAt,
+			CreatedAt:    model.CreatedAt,
+		})
+	}
+	response.Data = data
+	response.Pagination = Pagination{
+		Limit:  limit,
+		Offset: offset,
+	}
+
+	return response, nil
+}
+
+func (r *postRepository) GetPostsByUserID(ctx context.Context, targetUserID, currentUserID, limit, offset int) (GetAllPostResponse, error) {
+	var response GetAllPostResponse
+	query := `SELECT p.id, p.user_id, u.username, COALESCE(u.avatar_url, ''), p.post_title, p.post_content, p.post_hashtags, 
+				COALESCE(act.is_liked, false), p.created_at, p.updated_at,
+				COALESCE(up.file_path, ''), COALESCE(up.file_type, ''), COALESCE(up.file_size, 0),
+				COALESCE(p.upload_id, up.id, 0)
+				FROM posts as p
+				JOIN users as u ON p.user_id = u.id
+				LEFT JOIN activities as act ON p.id = act.post_id AND act.user_id = ?
+				LEFT JOIN uploads as up ON (p.upload_id = up.id OR (p.upload_id IS NULL AND p.post_content LIKE CONCAT('%', up.system_filename, '%')))
+				WHERE p.user_id = ?
+				ORDER BY p.created_at DESC 
+				LIMIT ? OFFSET ?`
+	rows, err := r.db.QueryContext(ctx, query, currentUserID, targetUserID, limit, offset)
+	if err != nil {
+		return response, fmt.Errorf("repository GetPostsByUserID: %w", err)
+	}
+	defer rows.Close()
+
+	data := make([]Data, 0)
+	for rows.Next() {
+		var username, avatarURL string
+		var isliked bool
+		var model PostModel
+		var filePath, fileType string
+		var fileSize int64
+		var uploadID int64
+
+		err = rows.Scan(
+			&model.ID,
+			&model.UserId,
+			&username,
+			&avatarURL,
+			&model.PostTitle,
+			&model.PostContent,
+			&model.PostHashtags,
+			&isliked,
+			&model.CreatedAt,
+			&model.UpdatedAt,
+			&filePath,
+			&fileType,
+			&fileSize,
+			&uploadID,
+		)
+		if err != nil {
+			return response, fmt.Errorf("repository GetPostsByUserID: %w", err)
+		}
+
+		var uploadIDPtr *int64
+		if uploadID > 0 {
+			uploadIDPtr = &uploadID
+		}
+
+		data = append(data, Data{
+			ID:           model.ID,
+			UserId:       model.UserId,
+			Username:     username,
+			AvatarURL:    avatarURL,
+			PostTitle:    model.PostTitle,
+			PostContent:  model.PostContent,
+			PostHashtags: strings.Split(model.PostHashtags, ","),
+			IsLiked:      isliked,
+			UploadID:     uploadIDPtr,
 			FilePath:     filePath,
 			Filepath:     filePath,
 			FileType:     fileType,
@@ -106,9 +199,10 @@ func (r *postRepository) GetAllPost(ctx context.Context, limit, offset, userID i
 }
 
 func (r *postRepository) GetPostById(ctx context.Context, id, userID int) (*Data, error) {
-	query := `SELECT p.id, p.user_id, u.username, p.post_title, p.post_content, p.post_hashtags, 
+	query := `SELECT p.id, p.user_id, u.username, COALESCE(u.avatar_url, ''), p.post_title, p.post_content, p.post_hashtags, 
 				COALESCE(act.is_liked, false), p.created_at, p.updated_at,
-				COALESCE(up.file_path, ''), COALESCE(up.file_type, ''), COALESCE(up.file_size, 0)
+				COALESCE(up.file_path, ''), COALESCE(up.file_type, ''), COALESCE(up.file_size, 0),
+				COALESCE(p.upload_id, up.id, 0)
 				FROM posts as p
 				JOIN users as u ON p.user_id = u.id
 				LEFT JOIN activities as act ON p.id = act.post_id AND act.user_id = ?
@@ -118,16 +212,18 @@ func (r *postRepository) GetPostById(ctx context.Context, id, userID int) (*Data
 
 	row := r.db.QueryRowContext(ctx, query, userID, id)
 	var (
-		model              PostModel
-		username           string
-		isliked            bool
-		filePath, fileType string
-		fileSize           int64
+		model                        PostModel
+		username, avatarURL          string
+		isliked                      bool
+		filePath, fileType           string
+		fileSize                     int64
+		uploadID                     int64
 	)
 	err := row.Scan(
 		&model.ID,
 		&model.UserId,
 		&username,
+		&avatarURL,
 		&model.PostTitle,
 		&model.PostContent,
 		&model.PostHashtags,
@@ -137,6 +233,7 @@ func (r *postRepository) GetPostById(ctx context.Context, id, userID int) (*Data
 		&filePath,
 		&fileType,
 		&fileSize,
+		&uploadID,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -145,14 +242,21 @@ func (r *postRepository) GetPostById(ctx context.Context, id, userID int) (*Data
 		return nil, fmt.Errorf("repository GetPostById: %w", err)
 	}
 
+	var uploadIDPtr *int64
+	if uploadID > 0 {
+		uploadIDPtr = &uploadID
+	}
+
 	data := Data{
 		ID:           model.ID,
 		UserId:       model.UserId,
 		Username:     username,
+		AvatarURL:    avatarURL,
 		PostTitle:    model.PostTitle,
 		PostContent:  model.PostContent,
 		PostHashtags: strings.Split(model.PostHashtags, ","),
 		IsLiked:      isliked,
+		UploadID:     uploadIDPtr,
 		FilePath:     filePath,
 		Filepath:     filePath,
 		FileType:     fileType,
@@ -175,4 +279,13 @@ func (r *postRepository) CheckPostExists(ctx context.Context, id int) (bool, err
 		return false, fmt.Errorf("repository CheckPostExists: %w", err)
 	}
 	return true, nil
+}
+
+func (r *postRepository) DeletePost(ctx context.Context, id int) error {
+	query := `DELETE FROM posts WHERE id = ?`
+	_, err := r.db.ExecContext(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("repository DeletePost: %w", err)
+	}
+	return nil
 }

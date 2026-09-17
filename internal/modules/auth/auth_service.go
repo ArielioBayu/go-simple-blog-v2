@@ -20,6 +20,7 @@ type AuthService interface {
 	SignIn(ctx context.Context, request SignInRequest) (string, string, error)
 	GetIdRefreshToken(ctx context.Context, request RefreshTokenRequest) (*RefreshTokenModel, error)
 	ValidateRefreshToken(ctx context.Context, userId int, request RefreshTokenRequest) (string, error)
+	SignOut(ctx context.Context, userId int) error
 }
 
 type authService struct {
@@ -166,4 +167,12 @@ func (s *authService) ValidateRefreshToken(ctx context.Context, userId int, requ
 	}
 
 	return token, nil
+}
+
+func (s *authService) SignOut(ctx context.Context, userId int) error {
+	err := s.authRepo.DeleteRefreshTokenByUserId(ctx, userId)
+	if err != nil {
+		return fmt.Errorf("service SignOut: %w", err)
+	}
+	return nil
 }

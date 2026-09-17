@@ -37,10 +37,12 @@ type (
 		ID           int            `json:"id" column:"id"`
 		UserId       int            `json:"user_id" column:"user_id"`
 		Username     string         `json:"username" column:"username"`
+		AvatarURL    string         `json:"avatar_url"`
 		PostTitle    string         `json:"post_title" column:"post_title"`
 		PostContent  string         `json:"post_content" column:"post_content"`
 		PostHashtags []string       `json:"post_hashtags" column:"post_hashtags"`
 		IsLiked      bool           `json:"is_liked" column:"is_liked"`
+		UploadID     *int64         `json:"upload_id,omitempty"`
 		FilePath     string         `json:"file_path"`
 		Filepath     string         `json:"filepath"`
 		FileType     string         `json:"file_type"`
