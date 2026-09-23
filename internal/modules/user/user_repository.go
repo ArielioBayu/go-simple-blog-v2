@@ -11,10 +11,11 @@ type UserRepository interface {
 	GetUser(ctx context.Context, email, username string) (*UserModel, error)
 	GetUserById(ctx context.Context, id int) (*UserModel, error)
 	GetUserByEmail(ctx context.Context, email string) (*UserModel, error)
-	CreateUser(ctx context.Context, model UserModel) error
+	CreateUser(ctx context.Context, model *UserModel) error
 	GetProfile(ctx context.Context, id int) (*ProfileResponse, error)
 	UpdateProfile(ctx context.Context, id int, req UpdateProfileRequest) (*ProfileResponse, error)
 	CheckUsernameExistsExcludeSelf(ctx context.Context, id int, username string) (bool, error)
+	UpdateUserVerification(ctx context.Context, userID int, isVerified bool) error
 }
 
 type userRepository struct {
@@ -26,7 +27,7 @@ func NewUserRepository(db *sql.DB) UserRepository {
 }
 
 func (r *userRepository) GetUser(ctx context.Context, email, username string) (*UserModel, error) {
-	query := `SELECT id, email, username, COALESCE(bio, ''), COALESCE(avatar_url, ''), COALESCE(banner_url, ''), created_at, updated_at, created_by, updated_by FROM users 
+	query := `SELECT id, email, username, COALESCE(bio, ''), COALESCE(avatar_url, ''), COALESCE(banner_url, ''), is_verified, created_at, updated_at, created_by, updated_by FROM users 
 			WHERE email = ? OR username = ?`
 	row := r.db.QueryRowContext(ctx, query, email, username)
 
@@ -38,6 +39,7 @@ func (r *userRepository) GetUser(ctx context.Context, email, username string) (*
 		&response.Bio,
 		&response.AvatarURL,
 		&response.BannerURL,
+		&response.IsVerified,
 		&response.CreatedAt,
 		&response.UpdatedAt,
 		&response.CreatedBy,
@@ -55,7 +57,7 @@ func (r *userRepository) GetUser(ctx context.Context, email, username string) (*
 }
 
 func (r *userRepository) GetUserById(ctx context.Context, id int) (*UserModel, error) {
-	query := `SELECT id, email, username, COALESCE(bio, ''), COALESCE(avatar_url, ''), COALESCE(banner_url, ''), created_at, updated_at, created_by, updated_by FROM users
+	query := `SELECT id, email, username, COALESCE(bio, ''), COALESCE(avatar_url, ''), COALESCE(banner_url, ''), is_verified, created_at, updated_at, created_by, updated_by FROM users
 				WHERE id = ?`
 	row := r.db.QueryRowContext(ctx, query, id)
 
@@ -67,6 +69,7 @@ func (r *userRepository) GetUserById(ctx context.Context, id int) (*UserModel, e
 		&response.Bio,
 		&response.AvatarURL,
 		&response.BannerURL,
+		&response.IsVerified,
 		&response.CreatedAt,
 		&response.UpdatedAt,
 		&response.CreatedBy,
@@ -83,7 +86,7 @@ func (r *userRepository) GetUserById(ctx context.Context, id int) (*UserModel, e
 }
 
 func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*UserModel, error) {
-	query := `SELECT id, email, password, username, COALESCE(bio, ''), COALESCE(avatar_url, ''), COALESCE(banner_url, ''), created_at, updated_at, created_by, updated_by 
+	query := `SELECT id, email, password, username, COALESCE(bio, ''), COALESCE(avatar_url, ''), COALESCE(banner_url, ''), is_verified, created_at, updated_at, created_by, updated_by 
 				FROM users WHERE email = ?`
 	row := r.db.QueryRowContext(ctx, query, email)
 
@@ -96,6 +99,7 @@ func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*Use
 		&response.Bio,
 		&response.AvatarURL,
 		&response.BannerURL,
+		&response.IsVerified,
 		&response.CreatedAt,
 		&response.UpdatedAt,
 		&response.CreatedBy,
@@ -110,15 +114,29 @@ func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*Use
 	return &response, nil
 }
 
-func (r *userRepository) CreateUser(ctx context.Context, model UserModel) error {
-	query := `INSERT INTO users (email, password, username, bio, avatar_url, banner_url, created_at, updated_at, created_by, updated_by)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	_, err := r.db.ExecContext(ctx, query, model.Email, model.Password, model.Username, model.Bio, model.AvatarURL, model.BannerURL,
+func (r *userRepository) CreateUser(ctx context.Context, model *UserModel) error {
+	query := `INSERT INTO users (email, password, username, bio, avatar_url, banner_url, is_verified, created_at, updated_at, created_by, updated_by)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	res, err := r.db.ExecContext(ctx, query, model.Email, model.Password, model.Username, model.Bio, model.AvatarURL, model.BannerURL, model.IsVerified,
 		model.CreatedAt, model.UpdatedAt, model.CreatedBy, model.UpdatedBy)
 	if err != nil {
 		return fmt.Errorf("repository create user: %w", err)
 	}
 
+	id, err := res.LastInsertId()
+	if err == nil {
+		model.ID = id
+	}
+
+	return nil
+}
+
+func (r *userRepository) UpdateUserVerification(ctx context.Context, userID int, isVerified bool) error {
+	query := `UPDATE users SET is_verified = ?, updated_at = NOW() WHERE id = ?`
+	_, err := r.db.ExecContext(ctx, query, isVerified, userID)
+	if err != nil {
+		return fmt.Errorf("repository UpdateUserVerification: %w", err)
+	}
 	return nil
 }
 
@@ -130,6 +148,7 @@ func (r *userRepository) GetProfile(ctx context.Context, id int) (*ProfileRespon
 				COALESCE(u.bio, ''), 
 				COALESCE(u.avatar_url, ''), 
 				COALESCE(u.banner_url, ''), 
+				COALESCE(u.is_verified, false),
 				u.created_at,
 				(SELECT COUNT(p.id) FROM posts p WHERE p.user_id = u.id) AS stories_count,
 				(SELECT COUNT(a.id) FROM activities a JOIN posts p ON a.post_id = p.id WHERE p.user_id = u.id AND a.is_liked = true) AS likes_count
@@ -144,6 +163,7 @@ func (r *userRepository) GetProfile(ctx context.Context, id int) (*ProfileRespon
 		&profile.Bio,
 		&profile.AvatarURL,
 		&profile.BannerURL,
+		&profile.IsVerified,
 		&profile.CreatedAt,
 		&profile.Stats.StoriesCount,
 		&profile.Stats.LikesCount,

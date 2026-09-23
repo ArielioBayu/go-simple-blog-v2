@@ -3,4 +3,11 @@ service:
   secret_key: "your_secret_key_here"
 
 Database:
-  dbsourcename: "your_db_user:your_db_password@tcp(localhost:3308)/your_database_name?parseTime=true&loc=Asia%2FJakarta"
+  dbsourcename: "your_db_user:your_db_password@tcp(localhost:3308)/your_database_name?parseTime=true&loc=Asia%2FJakarta&multiStatements=true"
+
+smtp:
+  smtp_host: "smtp.gmail.com"
+  smtp_port: 587
+  smtp_sender_name: "Simple Blog"
+  smtp_sender_email: "your_email@gmail.com"
+  smtp_password: "your_app_password"

@@ -7,12 +7,20 @@ import (
 	"log"
 	"time"
 
+	mysqlDriver "github.com/go-sql-driver/mysql"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/mysql"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 )
 
 func Connect(datasource string) (*sql.DB, error) {
+	if cfg, err := mysqlDriver.ParseDSN(datasource); err == nil {
+		if !cfg.MultiStatements {
+			cfg.MultiStatements = true
+			datasource = cfg.FormatDSN()
+		}
+	}
+
 	db, err := sql.Open("mysql", datasource)
 	if err != nil {
 		return nil, fmt.Errorf("error opening database: %w", err)

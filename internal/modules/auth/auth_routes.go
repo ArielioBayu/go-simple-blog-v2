@@ -7,8 +7,13 @@ import (
 
 func AuthRoutes(r *gin.RouterGroup, h *AuthHandler) {
 	group := r.Group("/auth")
-	group.POST("/sign-up", h.SignUp)
+
+	group.POST("/verify-otp", h.VerifyOTP)
 	group.POST("/sign-in", h.SignIn)
 	group.POST("/refresh", h.Refresh)
 	group.POST("/sign-out", middleware.AuthMiddlewareToken(), h.SignOut)
+
+	// rate limiter
+	group.POST("/sign-up", middleware.OTPRateLimiter(), h.SignUp)
+	group.POST("/resend-otp", middleware.OTPRateLimiter(), h.ResendOTP)
 }

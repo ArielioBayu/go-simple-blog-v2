@@ -1,0 +1,10 @@
+CREATE TABLE IF NOT EXISTS users_otp (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    otp_code VARCHAR(10) NOT NULL,
+    otp_type VARCHAR(30) NOT NULL DEFAULT 'EMAIL_VERIFICATION',
+    expired_at DATETIME NOT NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME NOT NULL,
+    CONSTRAINT fk_users_otp_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);

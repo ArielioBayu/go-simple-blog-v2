@@ -5,27 +5,29 @@ import (
 )
 
 type UserModel struct {
-	ID        int64     `column:"id"`
-	Email     string    `column:"email"`
-	Bio       string    `column:"bio"`
-	AvatarURL string    `column:"avatar_url"`
-	BannerURL string    `column:"banner_url"`
-	Password  string    `column:"password"`
-	CreatedAt time.Time `column:"created_at"`
-	UpdatedAt time.Time `column:"updated_at"`
-	CreatedBy string    `column:"created_by"`
-	UpdatedBy string    `column:"updated_by"`
-	Username  string    `column:"username"`
+	ID         int64     `column:"id"`
+	Email      string    `column:"email"`
+	Bio        string    `column:"bio"`
+	AvatarURL  string    `column:"avatar_url"`
+	BannerURL  string    `column:"banner_url"`
+	IsVerified bool      `column:"is_verified"`
+	Password   string    `column:"password"`
+	CreatedAt  time.Time `column:"created_at"`
+	UpdatedAt  time.Time `column:"updated_at"`
+	CreatedBy  string    `column:"created_by"`
+	UpdatedBy  string    `column:"updated_by"`
+	Username   string    `column:"username"`
 }
 
 type UserResponse struct {
-	ID        int64     `json:"id"`
-	Username  string    `json:"username"`
-	Email     string    `json:"email"`
-	Bio       string    `json:"bio"`
-	AvatarURL string    `json:"avatar_url"`
-	BannerURL string    `json:"banner_url"`
-	CreatedAt time.Time `json:"created_at"`
+	ID         int64     `json:"id"`
+	Username   string    `json:"username"`
+	Email      string    `json:"email"`
+	Bio        string    `json:"bio"`
+	AvatarURL  string    `json:"avatar_url"`
+	BannerURL  string    `json:"banner_url"`
+	IsVerified bool      `json:"is_verified"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
 type ProfileStats struct {
@@ -37,14 +39,15 @@ type ProfileStats struct {
 }
 
 type ProfileResponse struct {
-	ID        int64        `json:"id"`
-	Username  string       `json:"username"`
-	Email     string       `json:"email"`
-	Bio       string       `json:"bio"`
-	AvatarURL string       `json:"avatar_url"`
-	BannerURL string       `json:"banner_url"`
-	CreatedAt time.Time    `json:"created_at"`
-	Stats     ProfileStats `json:"stats"`
+	ID         int64        `json:"id"`
+	Username   string       `json:"username"`
+	Email      string       `json:"email"`
+	Bio        string       `json:"bio"`
+	AvatarURL  string       `json:"avatar_url"`
+	BannerURL  string       `json:"banner_url"`
+	IsVerified bool         `json:"is_verified"`
+	CreatedAt  time.Time    `json:"created_at"`
+	Stats      ProfileStats `json:"stats"`
 }
 
 type UpdateProfileRequest struct {

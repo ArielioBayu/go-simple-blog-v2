@@ -2,7 +2,6 @@ package auth
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -11,12 +10,15 @@ import (
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/constants"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/user"
 	"github.com/ArielioBayu/go-simple-blog-v2/pkg/jwt"
+	"github.com/ArielioBayu/go-simple-blog-v2/pkg/mail"
 	refToken "github.com/ArielioBayu/go-simple-blog-v2/pkg/token"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthService interface {
 	SignUp(ctx context.Context, request SignUpRequest) error
+	VerifyOTP(ctx context.Context, request VerifyOTPRequest) error
+	ResendOTP(ctx context.Context, request ResendOTPRequest) error
 	SignIn(ctx context.Context, request SignInRequest) (string, string, error)
 	GetIdRefreshToken(ctx context.Context, request RefreshTokenRequest) (*RefreshTokenModel, error)
 	ValidateRefreshToken(ctx context.Context, userId int, request RefreshTokenRequest) (string, error)
@@ -44,7 +46,32 @@ func (s *authService) SignUp(ctx context.Context, request SignUpRequest) error {
 	}
 
 	if existingUser != nil {
-		return constants.ErrUsernameOrEmailAlreadyExists
+		if existingUser.IsVerified {
+			return constants.ErrUsernameOrEmailAlreadyExists
+		}
+		otpCode, err := mail.GenerateOTP()
+		if err != nil {
+			return constants.ErrFailedGenerateOTP
+		}
+		_ = s.authRepo.DeleteOTPByUserIDAndType(ctx, int(existingUser.ID), "EMAIL_VERIFICATION")
+		now := time.Now()
+		err = s.authRepo.InsertOTP(ctx, UserOTPModel{
+			UserID:    existingUser.ID,
+			OTPCode:   otpCode,
+			OTPType:   "EMAIL_VERIFICATION",
+			ExpiredAt: now.Add(5 * time.Minute),
+			CreatedAt: now,
+			UpdatedAt: now,
+		})
+		if err != nil {
+			return fmt.Errorf("service signup save otp: %w", err)
+		}
+		go func() {
+			if err := mail.SendOTPEmail(s.cfg.SMTP, existingUser.Email, existingUser.Username, otpCode); err != nil {
+				log.Printf("[service signup] warning: failed to send otp email: %v", err)
+			}
+		}()
+		return nil
 	}
 
 	pass, err := bcrypt.GenerateFromPassword([]byte(request.Password), bcrypt.DefaultCost)
@@ -54,19 +81,119 @@ func (s *authService) SignUp(ctx context.Context, request SignUpRequest) error {
 
 	now := time.Now()
 	model := user.UserModel{
-		Email:     request.Email,
-		Username:  request.Username,
-		Password:  string(pass),
-		CreatedAt: now,
-		UpdatedAt: now,
-		CreatedBy: request.Email,
-		UpdatedBy: request.Email,
+		Email:      request.Email,
+		Username:   request.Username,
+		Password:   string(pass),
+		IsVerified: false,
+		CreatedAt:  now,
+		UpdatedAt:  now,
+		CreatedBy:  request.Email,
+		UpdatedBy:  request.Email,
 	}
 
-	err = s.userRepo.CreateUser(ctx, model)
+	err = s.userRepo.CreateUser(ctx, &model)
 	if err != nil {
 		return err
 	}
+
+	otpCode, err := mail.GenerateOTP()
+	if err != nil {
+		return constants.ErrFailedGenerateOTP
+	}
+
+	err = s.authRepo.InsertOTP(ctx, UserOTPModel{
+		UserID:    model.ID,
+		OTPCode:   otpCode,
+		OTPType:   "EMAIL_VERIFICATION",
+		ExpiredAt: now.Add(5 * time.Minute),
+		CreatedAt: now,
+		UpdatedAt: now,
+	})
+	if err != nil {
+		return fmt.Errorf("service signup save otp: %w", err)
+	}
+
+	go func() {
+		if err := mail.SendOTPEmail(s.cfg.SMTP, model.Email, model.Username, otpCode); err != nil {
+			log.Printf("[service signup] warning: failed to send otp email: %v", err)
+		}
+	}()
+
+	return nil
+}
+
+func (s *authService) VerifyOTP(ctx context.Context, request VerifyOTPRequest) error {
+	u, err := s.userRepo.GetUserByEmail(ctx, request.Email)
+	if err != nil {
+		return err
+	}
+
+	if u == nil {
+		return constants.ErrUserNotFound
+	}
+
+	if u.IsVerified {
+		return constants.ErrAccountAlreadyVerified
+	}
+
+	validOTP, err := s.authRepo.GetValidOTP(ctx, int(u.ID), request.OTP, "EMAIL_VERIFICATION", time.Now())
+	if err != nil {
+		return fmt.Errorf("service verify otp: %w", err)
+	}
+
+	if validOTP == nil {
+		return constants.ErrInvalidOrExpiredOTP
+	}
+
+	err = s.userRepo.UpdateUserVerification(ctx, int(u.ID), true)
+	if err != nil {
+		return fmt.Errorf("service verify otp update user: %w", err)
+	}
+
+	_ = s.authRepo.DeleteOTPByUserIDAndType(ctx, int(u.ID), "EMAIL_VERIFICATION")
+
+	return nil
+}
+
+func (s *authService) ResendOTP(ctx context.Context, request ResendOTPRequest) error {
+	u, err := s.userRepo.GetUserByEmail(ctx, request.Email)
+	if err != nil {
+		return err
+	}
+
+	if u == nil {
+		return constants.ErrUserNotFound
+	}
+
+	if u.IsVerified {
+		return constants.ErrAccountAlreadyVerified
+	}
+
+	otpCode, err := mail.GenerateOTP()
+	if err != nil {
+		return constants.ErrFailedGenerateOTP
+	}
+
+	_ = s.authRepo.DeleteOTPByUserIDAndType(ctx, int(u.ID), "EMAIL_VERIFICATION")
+
+	now := time.Now()
+	err = s.authRepo.InsertOTP(ctx, UserOTPModel{
+		UserID:    u.ID,
+		OTPCode:   otpCode,
+		OTPType:   "EMAIL_VERIFICATION",
+		ExpiredAt: now.Add(5 * time.Minute),
+		CreatedAt: now,
+		UpdatedAt: now,
+	})
+	if err != nil {
+		return fmt.Errorf("service resend otp save: %w", err)
+	}
+
+	go func() {
+		if err := mail.SendOTPEmail(s.cfg.SMTP, u.Email, u.Username, otpCode); err != nil {
+			log.Printf("[service resend otp] warning: failed to send otp email: %v", err)
+		}
+	}()
 
 	return nil
 }
@@ -84,6 +211,10 @@ func (s *authService) SignIn(ctx context.Context, request SignInRequest) (string
 	err = bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(request.Password))
 	if err != nil {
 		return "", "", constants.ErrInvalidPassword
+	}
+
+	if !u.IsVerified {
+		return "", "", constants.ErrAccountNotVerified
 	}
 
 	token, err := jwt.CreateToken(int(u.ID), u.Username, s.cfg.Service.SecretKey)
@@ -108,7 +239,7 @@ func (s *authService) SignIn(ctx context.Context, request SignInRequest) (string
 
 	refreshToken := refToken.GenerateRefreshToken()
 	if refreshToken == "" {
-		return token, "", errors.New("failed to generate refresh token")
+		return token, "", constants.ErrFailedGenerateRefreshToken
 	}
 
 	err = s.authRepo.InsertRefreshToken(ctx, RefreshTokenModel{

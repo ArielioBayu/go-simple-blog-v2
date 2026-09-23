@@ -53,6 +53,13 @@ func (h *AuthHandler) SignIn(c *gin.Context) {
 			})
 			return
 		}
+		if errors.Is(err, constants.ErrAccountNotVerified) {
+			c.JSON(http.StatusForbidden, response.MessageResponse{
+				Status:  http.StatusForbidden,
+				Message: err.Error(),
+			})
+			return
+		}
 
 		log.Printf("handler sign in failed | error: %v", err)
 		c.JSON(http.StatusInternalServerError, response.MessageResponse{
@@ -105,7 +112,99 @@ func (h *AuthHandler) SignUp(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, response.MessageResponse{
 		Status:  http.StatusCreated,
-		Message: "success created data",
+		Message: "success created data, please check your email for the OTP verification code",
+	})
+}
+
+func (h *AuthHandler) VerifyOTP(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	var request VerifyOTPRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, response.MessageResponse{
+			Status:  http.StatusBadRequest,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	err := h.authService.VerifyOTP(ctx, request)
+	if err != nil {
+		switch {
+		case errors.Is(err, constants.ErrUserNotFound):
+			c.JSON(http.StatusNotFound, response.MessageResponse{
+				Status:  http.StatusNotFound,
+				Message: err.Error(),
+			})
+			return
+		case errors.Is(err, constants.ErrAccountAlreadyVerified):
+			c.JSON(http.StatusBadRequest, response.MessageResponse{
+				Status:  http.StatusBadRequest,
+				Message: err.Error(),
+			})
+			return
+		case errors.Is(err, constants.ErrInvalidOrExpiredOTP):
+			c.JSON(http.StatusBadRequest, response.MessageResponse{
+				Status:  http.StatusBadRequest,
+				Message: err.Error(),
+			})
+			return
+		default:
+			log.Printf("handler verify otp failed | error: %v", err)
+			c.JSON(http.StatusInternalServerError, response.MessageResponse{
+				Status:  http.StatusInternalServerError,
+				Message: "internal server error",
+			})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, response.MessageResponse{
+		Status:  http.StatusOK,
+		Message: "email successfully verified, please login",
+	})
+}
+
+func (h *AuthHandler) ResendOTP(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	var request ResendOTPRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, response.MessageResponse{
+			Status:  http.StatusBadRequest,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	err := h.authService.ResendOTP(ctx, request)
+	if err != nil {
+		switch {
+		case errors.Is(err, constants.ErrUserNotFound):
+			c.JSON(http.StatusNotFound, response.MessageResponse{
+				Status:  http.StatusNotFound,
+				Message: err.Error(),
+			})
+			return
+		case errors.Is(err, constants.ErrAccountAlreadyVerified):
+			c.JSON(http.StatusBadRequest, response.MessageResponse{
+				Status:  http.StatusBadRequest,
+				Message: err.Error(),
+			})
+			return
+		default:
+			log.Printf("handler resend otp failed | error: %v", err)
+			c.JSON(http.StatusInternalServerError, response.MessageResponse{
+				Status:  http.StatusInternalServerError,
+				Message: "internal server error",
+			})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, response.MessageResponse{
+		Status:  http.StatusOK,
+		Message: "new OTP verification code has been sent to your email",
 	})
 }
 
