@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -168,16 +166,21 @@ func (s *postService) DeletePost(ctx context.Context, postId, userId int) error 
 		if err := s.uploadRepo.DeleteUpload(ctx, int(uploadItem.ID)); err != nil {
 			log.Printf("warning: failed to delete upload record %d: %v", uploadItem.ID, err)
 		}
-		if uploadItem.FilePath != "" {
-			targetFile := filepath.FromSlash(uploadItem.FilePath)
-			if err := os.Remove(targetFile); err != nil && !errors.Is(err, os.ErrNotExist) {
-				log.Printf("warning: failed to delete image file %s: %v", targetFile, err)
-			}
+		fileTarget := uploadItem.SystemFilename
+		if fileTarget == "" {
+			fileTarget = uploadItem.FilePath
+		}
+		if err := utils.RemoveUploadFile(fileTarget); err != nil {
+			log.Printf("warning: failed to remove physical upload file (%s): %v", fileTarget, err)
 		}
 	} else if post.FilePath != "" {
-		targetFile := filepath.FromSlash(post.FilePath)
-		if err := os.Remove(targetFile); err != nil && !errors.Is(err, os.ErrNotExist) {
-			log.Printf("warning: failed to delete image file %s: %v", targetFile, err)
+		if err := utils.RemoveUploadFile(post.FilePath); err != nil {
+			log.Printf("warning: failed to remove physical upload file (%s): %v", post.FilePath, err)
+		}
+	} else if strings.Contains(post.PostContent, "uploads") && s.uploadRepo != nil {
+		if contentUpload, err := s.uploadRepo.GetUploadByPathOrFilename(ctx, post.PostContent); err == nil && contentUpload != nil {
+			_ = s.uploadRepo.DeleteUpload(ctx, int(contentUpload.ID))
+			_ = utils.RemoveUploadFile(contentUpload.SystemFilename)
 		}
 	}
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -15,25 +14,8 @@ import (
 	"time"
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/configs"
+	"github.com/ArielioBayu/go-simple-blog-v2/pkg/utils"
 )
-
-const (
-	MaxUploadSize = 5 * 1024 * 1024 // 5MB
-	UploadDir     = "./uploads"
-)
-
-var (
-	ErrFileRequired  = errors.New("file is required (key: 'file')")
-	ErrFileTooLarge  = errors.New("file size exceeds 5MB limit")
-	ErrInvalidFormat = errors.New("invalid file format. Allowed formats: jpg, jpeg, png, webp, gif")
-)
-
-var allowedMIMETypes = map[string]string{
-	"image/jpeg": ".jpg",
-	"image/png":  ".png",
-	"image/webp": ".webp",
-	"image/gif":  ".gif",
-}
 
 type UploadService interface {
 	UploadImage(ctx context.Context, userID int, fileHeader *multipart.FileHeader, scheme, host string) (*UploadResponse, error)
@@ -54,11 +36,11 @@ func NewUploadService(cfg *configs.Config, uploadRepo UploadRepository) UploadSe
 
 func (s *uploadService) UploadImage(ctx context.Context, userID int, fileHeader *multipart.FileHeader, scheme, host string) (*UploadResponse, error) {
 	if fileHeader == nil {
-		return nil, ErrFileRequired
+		return nil, utils.ErrFileRequired
 	}
 
-	if fileHeader.Size > MaxUploadSize {
-		return nil, ErrFileTooLarge
+	if fileHeader.Size > utils.MaxUploadSize {
+		return nil, utils.ErrFileTooLarge
 	}
 
 	file, err := fileHeader.Open()
@@ -75,9 +57,9 @@ func (s *uploadService) UploadImage(ctx context.Context, userID int, fileHeader 
 	}
 
 	contentType := http.DetectContentType(buffer[:n])
-	expectedExt, isAllowed := allowedMIMETypes[contentType]
+	expectedExt, isAllowed := utils.AllowedMIMETypes[contentType]
 	if !isAllowed {
-		return nil, ErrInvalidFormat
+		return nil, utils.ErrInvalidFormat
 	}
 
 	// Kembalikan pointer pembaca ke awal file
@@ -85,7 +67,7 @@ func (s *uploadService) UploadImage(ctx context.Context, userID int, fileHeader 
 		return nil, fmt.Errorf("failed to seek file: %w", err)
 	}
 
-	if err := os.MkdirAll(UploadDir, os.ModePerm); err != nil {
+	if err := os.MkdirAll(utils.UploadDir, os.ModePerm); err != nil {
 		return nil, fmt.Errorf("failed to create upload directory: %w", err)
 	}
 
@@ -100,7 +82,7 @@ func (s *uploadService) UploadImage(ctx context.Context, userID int, fileHeader 
 	randomHex := hex.EncodeToString(randomBytes)
 
 	uniqueFilename := fmt.Sprintf("%d-%s%s", time.Now().Unix(), randomHex, ext)
-	dstPath := filepath.Join(UploadDir, uniqueFilename)
+	dstPath := filepath.Join(utils.UploadDir, uniqueFilename)
 
 	dst, err := os.Create(dstPath)
 	if err != nil {

@@ -12,6 +12,7 @@ import (
 	"github.com/ArielioBayu/go-simple-blog-v2/pkg/jwt"
 	"github.com/ArielioBayu/go-simple-blog-v2/pkg/mail"
 	refToken "github.com/ArielioBayu/go-simple-blog-v2/pkg/token"
+	"github.com/ArielioBayu/go-simple-blog-v2/pkg/utils"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -53,13 +54,13 @@ func (s *authService) SignUp(ctx context.Context, request SignUpRequest) error {
 		if err != nil {
 			return constants.ErrFailedGenerateOTP
 		}
-		_ = s.authRepo.DeleteOTPByUserIDAndType(ctx, int(existingUser.ID), "EMAIL_VERIFICATION")
+		_ = s.authRepo.DeleteOTPByUserIDAndType(ctx, int(existingUser.ID), utils.OTPTypeEmailVerification)
 		now := time.Now()
 		err = s.authRepo.InsertOTP(ctx, UserOTPModel{
 			UserID:    existingUser.ID,
 			OTPCode:   otpCode,
-			OTPType:   "EMAIL_VERIFICATION",
-			ExpiredAt: now.Add(5 * time.Minute),
+			OTPType:   utils.OTPTypeEmailVerification,
+			ExpiredAt: now.Add(utils.OTPExpirationDuration),
 			CreatedAt: now,
 			UpdatedAt: now,
 		})
@@ -104,8 +105,8 @@ func (s *authService) SignUp(ctx context.Context, request SignUpRequest) error {
 	err = s.authRepo.InsertOTP(ctx, UserOTPModel{
 		UserID:    model.ID,
 		OTPCode:   otpCode,
-		OTPType:   "EMAIL_VERIFICATION",
-		ExpiredAt: now.Add(5 * time.Minute),
+		OTPType:   utils.OTPTypeEmailVerification,
+		ExpiredAt: now.Add(utils.OTPExpirationDuration),
 		CreatedAt: now,
 		UpdatedAt: now,
 	})
@@ -136,7 +137,7 @@ func (s *authService) VerifyOTP(ctx context.Context, request VerifyOTPRequest) e
 		return constants.ErrAccountAlreadyVerified
 	}
 
-	validOTP, err := s.authRepo.GetValidOTP(ctx, int(u.ID), request.OTP, "EMAIL_VERIFICATION", time.Now())
+	validOTP, err := s.authRepo.GetValidOTP(ctx, int(u.ID), request.OTP, utils.OTPTypeEmailVerification, time.Now())
 	if err != nil {
 		return fmt.Errorf("service verify otp: %w", err)
 	}
@@ -150,7 +151,7 @@ func (s *authService) VerifyOTP(ctx context.Context, request VerifyOTPRequest) e
 		return fmt.Errorf("service verify otp update user: %w", err)
 	}
 
-	_ = s.authRepo.DeleteOTPByUserIDAndType(ctx, int(u.ID), "EMAIL_VERIFICATION")
+	_ = s.authRepo.DeleteOTPByUserIDAndType(ctx, int(u.ID), utils.OTPTypeEmailVerification)
 
 	return nil
 }
@@ -174,14 +175,14 @@ func (s *authService) ResendOTP(ctx context.Context, request ResendOTPRequest) e
 		return constants.ErrFailedGenerateOTP
 	}
 
-	_ = s.authRepo.DeleteOTPByUserIDAndType(ctx, int(u.ID), "EMAIL_VERIFICATION")
+	_ = s.authRepo.DeleteOTPByUserIDAndType(ctx, int(u.ID), utils.OTPTypeEmailVerification)
 
 	now := time.Now()
 	err = s.authRepo.InsertOTP(ctx, UserOTPModel{
 		UserID:    u.ID,
 		OTPCode:   otpCode,
-		OTPType:   "EMAIL_VERIFICATION",
-		ExpiredAt: now.Add(5 * time.Minute),
+		OTPType:   utils.OTPTypeEmailVerification,
+		ExpiredAt: now.Add(utils.OTPExpirationDuration),
 		CreatedAt: now,
 		UpdatedAt: now,
 	})

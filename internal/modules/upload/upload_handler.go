@@ -7,6 +7,7 @@ import (
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/configs"
 	"github.com/ArielioBayu/go-simple-blog-v2/pkg/response"
+	"github.com/ArielioBayu/go-simple-blog-v2/pkg/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -35,7 +36,7 @@ func (h *UploadHandler) UploadFile(c *gin.Context) {
 	}
 
 	// Batasi ukuran request body ke 5MB + 1MB multipart overhead untuk proteksi DoS
-	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, MaxUploadSize+1024*1024)
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, utils.MaxUploadSize+1024*1024)
 
 	file, err := c.FormFile("file")
 	if err != nil {
@@ -57,7 +58,7 @@ func (h *UploadHandler) UploadFile(c *gin.Context) {
 
 	res, err := h.uploadService.UploadImage(ctx, userID, file, scheme, host)
 	if err != nil {
-		if errors.Is(err, ErrFileRequired) || errors.Is(err, ErrFileTooLarge) || errors.Is(err, ErrInvalidFormat) {
+		if errors.Is(err, utils.ErrFileRequired) || errors.Is(err, utils.ErrFileTooLarge) || errors.Is(err, utils.ErrInvalidFormat) {
 			c.JSON(http.StatusBadRequest, response.MessageResponse{
 				Status:  http.StatusBadRequest,
 				Message: err.Error(),
