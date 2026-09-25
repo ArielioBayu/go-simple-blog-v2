@@ -54,6 +54,14 @@ func RunMigration(db *sql.DB, migrationPath string) {
 		log.Fatal("Gagal inisialisasi migration: ", err)
 	}
 
+	version, dirty, err := m.Version()
+	if err == nil && dirty {
+		log.Printf("Detected dirty migration state at version %d. Auto-resolving and forcing rollback to version %d...", version, version-1)
+		if forceErr := m.Force(int(version - 1)); forceErr != nil {
+			log.Printf("Warning: failed to force clean migration version: %v", forceErr)
+		}
+	}
+
 	if err := m.Up(); err != nil {
 		if errors.Is(err, migrate.ErrNoChange) {
 			log.Println("Migration: tidak ada perubahan, semua sudah up-to-date")

@@ -5,13 +5,22 @@ import (
 	"github.com/ArielioBayu/go-simple-blog-v2/pkg/utils"
 )
 
+type PostMedia struct {
+	ID        int64          `json:"id" column:"id"`
+	PostID    int            `json:"post_id" column:"post_id"`
+	UploadID  int64          `json:"upload_id" column:"upload_id"`
+	FilePath  string         `json:"file_path" column:"file_path"`
+	FileType  string         `json:"file_type" column:"file_type"`
+	FileSize  int64          `json:"file_size" column:"file_size"`
+	SortOrder int            `json:"sort_order" column:"sort_order"`
+	CreatedAt utils.JsonTime `json:"created_at" column:"created_at"`
+}
+
 type PostRequest struct {
 	PostTitle    string   `json:"post_title"`
 	PostContent  string   `json:"post_content"`
 	PostHashtags []string `json:"post_hashtags"`
-	UploadID     *int64   `json:"upload_id,omitempty"`
-	FilePath     string   `json:"file_path,omitempty"`
-	Filepath     string   `json:"filepath,omitempty"`
+	UploadIDs    []int64  `json:"upload_ids,omitempty"`
 }
 
 type PostModel struct {
@@ -42,11 +51,13 @@ type (
 		PostContent  string         `json:"post_content" column:"post_content"`
 		PostHashtags []string       `json:"post_hashtags" column:"post_hashtags"`
 		IsLiked      bool           `json:"is_liked" column:"is_liked"`
+		IsSaved      bool           `json:"is_saved" column:"is_saved"`
 		UploadID     *int64         `json:"upload_id,omitempty"`
 		FilePath     string         `json:"file_path"`
 		Filepath     string         `json:"filepath"`
 		FileType     string         `json:"file_type"`
 		FileSize     int64          `json:"file_size"`
+		Media        []PostMedia    `json:"media"`
 		CreatedAt    utils.JsonTime `json:"created_at" column:"created_at"`
 		UpdatedAt    utils.JsonTime `json:"updated_at" column:"updated_at"`
 	}

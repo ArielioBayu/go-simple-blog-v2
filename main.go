@@ -33,7 +33,7 @@ func main() {
 
 	cfg = configs.Get()
 
-	db, err := internalsql.Connect(cfg.Database.DbSourceName)
+	db, err := internalsql.Connect(cfg.Database.GetDSN())
 	if err != nil {
 		log.Fatal("Gagal Inisiasi Database: ", err)
 	}

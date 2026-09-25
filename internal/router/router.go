@@ -6,6 +6,7 @@ import (
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/auth"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/comment"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/post"
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/saves"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/upload"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/user"
 	"github.com/gin-gonic/gin"
@@ -18,6 +19,7 @@ func registerModuleRoutes(group *gin.RouterGroup, h *handlers.Handlers) {
 	comment.CommentRoutes(group, h.Comment)
 	activity.ActivityRoutes(group, h.Activity)
 	upload.UploadRoutes(group, h.Upload)
+	saves.SavesRoutes(group, h.Saves)
 }
 
 func SetupRoutes(r *gin.Engine, h *handlers.Handlers) {

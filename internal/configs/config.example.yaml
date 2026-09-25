@@ -2,8 +2,15 @@ service:
   port: ":9888"
   secret_key: "your_secret_key_here"
 
-Database:
-  dbsourcename: "your_db_user:your_db_password@tcp(localhost:3308)/your_database_name?parseTime=true&loc=Asia%2FJakarta&multiStatements=true"
+database:
+  host: "127.0.0.1"
+  port: 3308
+  user: "your_db_user"
+  password: "your_db_password"
+  name: "your_database_name"
+  timezone: "Asia/Jakarta"
+  parse_time: true
+  multi_statements: true
 
 smtp:
   smtp_host: "smtp.gmail.com"

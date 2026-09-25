@@ -1,5 +1,10 @@
 package configs
 
+import (
+	"fmt"
+	"net/url"
+)
+
 type (
 	Config struct {
 		Service  Service  `mapstructure:"service"`
@@ -12,7 +17,14 @@ type (
 	}
 
 	Database struct {
-		DbSourceName string `mapstructure:"dbsourcename"`
+		Host            string `mapstructure:"host"`
+		Port            int    `mapstructure:"port"`
+		User            string `mapstructure:"user"`
+		Password        string `mapstructure:"password"`
+		Name            string `mapstructure:"name"`
+		Timezone        string `mapstructure:"timezone"`
+		ParseTime       bool   `mapstructure:"parse_time"`
+		MultiStatements bool   `mapstructure:"multi_statements"`
 	}
 
 	SMTP struct {
@@ -23,3 +35,23 @@ type (
 		SMTPPassword    string `mapstructure:"smtp_password"`
 	}
 )
+
+// GetDSN merakit string koneksi database secara dinamis dan aman
+func (d Database) GetDSN() string {
+	tz := d.Timezone
+	if tz == "" {
+		tz = "Asia/Jakarta"
+	}
+
+	return fmt.Sprintf(
+		"%s:%s@tcp(%s:%d)/%s?parseTime=%t&loc=%s&multiStatements=%t",
+		d.User,
+		d.Password,
+		d.Host,
+		d.Port,
+		d.Name,
+		d.ParseTime,
+		url.QueryEscape(tz),
+		d.MultiStatements,
+	)
+}
