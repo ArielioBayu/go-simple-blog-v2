@@ -13,6 +13,8 @@ var (
 	// Not Found
 	ErrDataNotFound         = errors.New("Data Not Found")
 	ErrPostNotFound         = errors.New("Error Post Not Found")
+	ErrCommentNotFound      = errors.New("comment not found")
+	ErrReplyNotFound        = errors.New("reply not found")
 	ErrRefreshTokenNotFound = errors.New("refresh token not found")
 
 	//	Invalid Token & Verification
