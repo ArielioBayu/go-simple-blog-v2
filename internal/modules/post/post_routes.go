@@ -11,6 +11,7 @@ func PostRoutes(r *gin.RouterGroup, h *PostHandler) {
 
 	group.POST("", h.CreatePost)
 	group.GET("", h.GetAllPost)
+	group.GET("/feed", h.GetPersonalizedFeed)
 	group.GET("/:postId", h.GetPostById)
 	group.DELETE("/:postId", h.DeletePost)
 	group.GET("/user/:userId", h.GetPostsByUserID)

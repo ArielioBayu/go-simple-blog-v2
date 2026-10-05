@@ -5,6 +5,7 @@ import (
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/activity"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/auth"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/comment"
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/follow"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/post"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/saves"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/upload"
@@ -20,6 +21,7 @@ type Handlers struct {
 	Activity *activity.ActivityHandler
 	Upload   *upload.UploadHandler
 	Saves    *saves.SavesHandler
+	Follow   *follow.FollowHandler
 }
 
 func InitHandlers(services *service.Services, cfg *configs.Config) *Handlers {
@@ -31,5 +33,7 @@ func InitHandlers(services *service.Services, cfg *configs.Config) *Handlers {
 		Activity: activity.NewActivityHandler(services.Activity, cfg),
 		Upload:   upload.NewUploadHandler(services.Upload, cfg),
 		Saves:    saves.NewSavesHandler(services.Saves, cfg),
+		Follow:   follow.NewFollowHandler(services.Follow, cfg),
 	}
 }
+

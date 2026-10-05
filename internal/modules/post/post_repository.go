@@ -15,6 +15,7 @@ import (
 type PostRepository interface {
 	CreatePost(ctx context.Context, model PostModel, uploadIDs []int64) error
 	GetAllPost(ctx context.Context, limit, offset, userID int) (GetAllPostResponse, error)
+	GetPersonalizedFeed(ctx context.Context, limit, offset, userID int) (GetAllPostResponse, error)
 	GetPostsByUserID(ctx context.Context, targetUserID, currentUserID, limit, offset int) (GetAllPostResponse, error)
 	GetPostById(ctx context.Context, id, userID int) (*Data, error)
 	DeletePost(ctx context.Context, id int) error
@@ -146,9 +147,12 @@ func (r *postRepository) GetAllPost(ctx context.Context, limit, offset, userID i
 				LEFT JOIN activities as act ON p.id = act.post_id AND act.user_id = ?
 				LEFT JOIN user_saved_posts as usp ON p.id = usp.post_id AND usp.user_id = ?
 				LEFT JOIN uploads as up ON (p.upload_id = up.id OR (p.upload_id IS NULL AND p.post_content LIKE CONCAT('%', up.system_filename, '%')))
+				WHERE (u.is_private = false OR p.user_id = ? OR p.user_id IN (
+					SELECT following_id FROM user_follows WHERE follower_id = ? AND status = 'accepted'
+				))
 				ORDER BY p.created_at DESC 
 				LIMIT ? OFFSET ?`
-	rows, err := r.db.QueryContext(ctx, query, userID, userID, limit, offset)
+	rows, err := r.db.QueryContext(ctx, query, userID, userID, userID, userID, limit, offset)
 	if err != nil {
 		return response, fmt.Errorf("repository GetAllPost: %w", err)
 	}
@@ -255,6 +259,134 @@ func (r *postRepository) GetAllPost(ctx context.Context, limit, offset, userID i
 
 	return response, nil
 }
+
+func (r *postRepository) GetPersonalizedFeed(ctx context.Context, limit, offset, userID int) (GetAllPostResponse, error) {
+	var response GetAllPostResponse
+	query := `SELECT p.id, p.user_id, u.username, COALESCE(u.avatar_url, ''), p.post_title, p.post_content, p.post_hashtags, 
+				COALESCE(act.is_liked, false), (usp.id IS NOT NULL), p.created_at, p.updated_at,
+				COALESCE(up.file_path, ''), COALESCE(up.file_type, ''), COALESCE(up.file_size, 0),
+				COALESCE(p.upload_id, up.id, 0)
+				FROM posts as p
+				JOIN users as u ON p.user_id = u.id
+				LEFT JOIN activities as act ON p.id = act.post_id AND act.user_id = ?
+				LEFT JOIN user_saved_posts as usp ON p.id = usp.post_id AND usp.user_id = ?
+				LEFT JOIN uploads as up ON (p.upload_id = up.id OR (p.upload_id IS NULL AND p.post_content LIKE CONCAT('%', up.system_filename, '%')))
+				WHERE p.user_id = ?
+				   OR p.user_id IN (
+				       SELECT following_id 
+				       FROM user_follows 
+				       WHERE follower_id = ? AND status = 'accepted'
+				   )
+				ORDER BY p.created_at DESC 
+				LIMIT ? OFFSET ?`
+	rows, err := r.db.QueryContext(ctx, query, userID, userID, userID, userID, limit, offset)
+	if err != nil {
+		return response, fmt.Errorf("repository GetPersonalizedFeed: %w", err)
+	}
+	defer rows.Close()
+
+	data := make([]Data, 0)
+	postIDs := make([]int, 0)
+	for rows.Next() {
+		var username, avatarURL string
+		var isliked, issaved bool
+		var model PostModel
+		var filePath, fileType string
+		var fileSize int64
+		var uploadID int64
+
+		err = rows.Scan(
+			&model.ID,
+			&model.UserId,
+			&username,
+			&avatarURL,
+			&model.PostTitle,
+			&model.PostContent,
+			&model.PostHashtags,
+			&isliked,
+			&issaved,
+			&model.CreatedAt,
+			&model.UpdatedAt,
+			&filePath,
+			&fileType,
+			&fileSize,
+			&uploadID,
+		)
+		if err != nil {
+			return response, fmt.Errorf("repository GetPersonalizedFeed scan: %w", err)
+		}
+
+		var uploadIDPtr *int64
+		if uploadID > 0 {
+			uploadIDPtr = &uploadID
+		}
+
+		postIDs = append(postIDs, model.ID)
+		data = append(data, Data{
+			ID:           model.ID,
+			UserId:       model.UserId,
+			Username:     username,
+			AvatarURL:    avatarURL,
+			PostTitle:    model.PostTitle,
+			PostContent:  model.PostContent,
+			PostHashtags: strings.Split(model.PostHashtags, ","),
+			IsLiked:      isliked,
+			IsSaved:      issaved,
+			UploadID:     uploadIDPtr,
+			FilePath:     filePath,
+			Filepath:     filePath,
+			FileType:     fileType,
+			FileSize:     fileSize,
+			Media:        []PostMedia{},
+			UpdatedAt:    model.UpdatedAt,
+			CreatedAt:    model.CreatedAt,
+		})
+	}
+
+	if len(postIDs) > 0 {
+		mediaMap, err := r.getMediaByPostIDs(ctx, postIDs)
+		if err != nil {
+			return response, fmt.Errorf("repository GetPersonalizedFeed media: %w", err)
+		}
+		for i := range data {
+			if medias, ok := mediaMap[data[i].ID]; ok && len(medias) > 0 {
+				data[i].Media = medias
+			} else if data[i].UploadID != nil && *data[i].UploadID > 0 {
+				data[i].Media = []PostMedia{
+					{
+						PostID:    data[i].ID,
+						UploadID:  *data[i].UploadID,
+						FilePath:  data[i].FilePath,
+						FileType:  data[i].FileType,
+						FileSize:  data[i].FileSize,
+						SortOrder: 0,
+						CreatedAt: data[i].CreatedAt,
+					},
+				}
+			} else if data[i].FilePath != "" {
+				data[i].Media = []PostMedia{
+					{
+						PostID:    data[i].ID,
+						FilePath:  data[i].FilePath,
+						FileType:  data[i].FileType,
+						FileSize:  data[i].FileSize,
+						SortOrder: 0,
+						CreatedAt: data[i].CreatedAt,
+					},
+				}
+			}
+		}
+	}
+
+	response.Data = data
+	response.Pagination = Pagination{
+		Limit:  limit,
+		Offset: offset,
+	}
+
+	return response, nil
+}
+
 
 func (r *postRepository) GetPostsByUserID(ctx context.Context, targetUserID, currentUserID, limit, offset int) (GetAllPostResponse, error) {
 	var response GetAllPostResponse

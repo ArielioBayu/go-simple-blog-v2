@@ -102,6 +102,64 @@ func (h *PostHandler) GetAllPost(c *gin.Context) {
 	})
 }
 
+func (h *PostHandler) GetPersonalizedFeed(c *gin.Context) {
+	ctx := c.Request.Context()
+	userID := c.GetInt("id")
+	if userID == 0 {
+		c.JSON(http.StatusUnauthorized, response.MessageResponse{
+			Status:  http.StatusUnauthorized,
+			Message: "unauthorized",
+		})
+		return
+	}
+
+	pageIndex := 1
+	if pageIndexStr := c.Query("pageIndex"); pageIndexStr != "" {
+		p, err := strconv.Atoi(pageIndexStr)
+		if err == nil && p > 0 {
+			pageIndex = p
+		}
+	} else if pageStr := c.Query("page"); pageStr != "" {
+		p, err := strconv.Atoi(pageStr)
+		if err == nil && p > 0 {
+			pageIndex = p
+		}
+	}
+
+	pageSize := 10
+	if pageSizeStr := c.Query("pageSize"); pageSizeStr != "" {
+		s, err := strconv.Atoi(pageSizeStr)
+		if err == nil && s > 0 {
+			pageSize = s
+		}
+	} else if limitStr := c.Query("limit"); limitStr != "" {
+		s, err := strconv.Atoi(limitStr)
+		if err == nil && s > 0 {
+			pageSize = s
+		}
+	}
+
+	postResp, err := h.postService.GetPersonalizedFeed(ctx, pageSize, pageIndex, userID)
+	if err != nil {
+		log.Printf("GetPersonalizedFeed Failed | error: %v", err)
+		c.JSON(http.StatusInternalServerError, response.MessageResponse{
+			Status:  http.StatusInternalServerError,
+			Message: "internal server error",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, response.PaginationResponse{
+		Status:  http.StatusOK,
+		Message: "success get personalized feed",
+		Pagination: &response.Pagination{
+			Limit:  postResp.Pagination.Limit,
+			Offset: postResp.Pagination.Offset,
+		},
+		Data: postResp.Data,
+	})
+}
+
 func (h *PostHandler) GetPostById(c *gin.Context) {
 	ctx := c.Request.Context()
 	postId := c.Param("postId")
@@ -122,6 +180,13 @@ func (h *PostHandler) GetPostById(c *gin.Context) {
 			c.JSON(http.StatusNotFound, response.MessageResponse{
 				Status:  http.StatusNotFound,
 				Message: "Post Not Found",
+			})
+			return
+		}
+		if errors.Is(err, constants.ErrPrivateAccount) {
+			c.JSON(http.StatusForbidden, response.MessageResponse{
+				Status:  http.StatusForbidden,
+				Message: constants.ErrPrivateAccount.Error(),
 			})
 			return
 		}
@@ -197,6 +262,21 @@ func (h *PostHandler) GetPostsByUserID(c *gin.Context) {
 	currentUserID := c.GetInt("id")
 	postResp, err := h.postService.GetPostsByUserID(ctx, targetUserID, currentUserID, pageSize, pageIndex)
 	if err != nil {
+		if errors.Is(err, constants.ErrUserNotFound) {
+			c.JSON(http.StatusNotFound, response.MessageResponse{
+				Status:  http.StatusNotFound,
+				Message: "user not found",
+			})
+			return
+		}
+		if errors.Is(err, constants.ErrPrivateAccount) {
+			c.JSON(http.StatusForbidden, response.MessageResponse{
+				Status:  http.StatusForbidden,
+				Message: constants.ErrPrivateAccount.Error(),
+			})
+			return
+		}
+
 		log.Printf("GetPostsByUserID Failed | error: %v", err)
 		c.JSON(http.StatusInternalServerError, response.MessageResponse{
 			Status:  http.StatusInternalServerError,

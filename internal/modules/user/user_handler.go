@@ -187,3 +187,43 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 		Data:    profile,
 	})
 }
+
+func (h *UserHandler) UpdatePrivacy(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	userId := c.GetInt("id")
+	if userId == 0 {
+		c.JSON(http.StatusUnauthorized, response.MessageResponse{
+			Status:  http.StatusUnauthorized,
+			Message: "unauthorized",
+		})
+		return
+	}
+
+	var req UpdatePrivacyRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, response.MessageResponse{
+			Status:  http.StatusBadRequest,
+			Message: "invalid request body: is_private is required (true or false)",
+		})
+		return
+	}
+
+	if err := h.userService.UpdatePrivacy(ctx, userId, req); err != nil {
+		log.Printf("UpdatePrivacy error: %v", err)
+		c.JSON(http.StatusInternalServerError, response.MessageResponse{
+			Status:  http.StatusInternalServerError,
+			Message: "internal server error",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, response.DataResponse{
+		Status:  http.StatusOK,
+		Message: "account privacy updated",
+		Data: gin.H{
+			"is_private": *req.IsPrivate,
+		},
+	})
+}
+

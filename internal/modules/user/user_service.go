@@ -13,6 +13,7 @@ type UserService interface {
 	GetProfile(ctx context.Context, id int) (*ProfileResponse, error)
 	GetProfileByID(ctx context.Context, id int) (*ProfileResponse, error)
 	UpdateProfile(ctx context.Context, id int, req UpdateProfileRequest) (*ProfileResponse, error)
+	UpdatePrivacy(ctx context.Context, id int, req UpdatePrivacyRequest) error
 }
 
 type userService struct {
@@ -62,3 +63,11 @@ func (s *userService) UpdateProfile(ctx context.Context, id int, req UpdateProfi
 
 	return s.userRepo.UpdateProfile(ctx, id, req)
 }
+
+func (s *userService) UpdatePrivacy(ctx context.Context, id int, req UpdatePrivacyRequest) error {
+	if req.IsPrivate == nil {
+		return constants.ErrDataNotFound
+	}
+	return s.userRepo.UpdatePrivacy(ctx, id, *req.IsPrivate)
+}
+
