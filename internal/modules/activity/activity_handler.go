@@ -1,11 +1,11 @@
 package activity
 
 import (
-	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/configs"
+	"github.com/ArielioBayu/go-simple-blog-v2/pkg/apperror"
 	"github.com/ArielioBayu/go-simple-blog-v2/pkg/response"
 	"github.com/gin-gonic/gin"
 )
@@ -26,47 +26,30 @@ func (h *ActivityHandler) InsertUpdateActivities(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	var request ActivityRequest
-	err := c.ShouldBindJSON(&request)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, response.MessageResponse{
-			Status:  http.StatusBadRequest,
-			Message: err.Error(),
-		})
+	if err := c.ShouldBindJSON(&request); err != nil {
+		response.Error(c, err)
 		return
 	}
 
 	postId, err := strconv.Atoi(c.Param("postId"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.MessageResponse{
-			Status:  http.StatusBadRequest,
-			Message: "Invalid Post Id",
-		})
+		response.Error(c, apperror.NewBadRequest("Invalid Post Id", err))
 		return
 	}
 
 	userId, exists := c.Get("id")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, response.MessageResponse{
-			Status:  http.StatusUnauthorized,
-			Message: "Unauthorized",
-		})
+		response.Error(c, apperror.NewUnauthorized("Unauthorized", nil))
 		return
 	}
 
 	err = h.activityService.InsertUpdateActivities(ctx, postId, userId.(int), request)
 	if err != nil {
-		log.Printf("InsertUpdateActivities failed | error: %v", err)
-		c.JSON(http.StatusInternalServerError, response.MessageResponse{
-			Status:  http.StatusInternalServerError,
-			Message: "Internal server error",
-		})
+		response.Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, response.MessageResponse{
-		Status:  http.StatusOK,
-		Message: "success",
-	})
+	response.Success(c, http.StatusOK, "success")
 }
 
 func (h *ActivityHandler) CountLikes(c *gin.Context) {
@@ -74,29 +57,18 @@ func (h *ActivityHandler) CountLikes(c *gin.Context) {
 
 	postId, err := strconv.Atoi(c.Param("postId"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.MessageResponse{
-			Status:  http.StatusBadRequest,
-			Message: "Invalid Post Id",
-		})
+		response.Error(c, apperror.NewBadRequest("Invalid Post Id", err))
 		return
 	}
 
 	count, err := h.activityService.CountLikes(ctx, postId)
 	if err != nil {
-		log.Printf("CountLikes failed | error: %v", err)
-		c.JSON(http.StatusInternalServerError, response.MessageResponse{
-			Status:  http.StatusInternalServerError,
-			Message: "Internal server error",
-		})
+		response.Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, response.DataResponse{
-		Status:  http.StatusOK,
-		Message: "success get like count",
-		Data: gin.H{
-			"post_id":    postId,
-			"like_count": count,
-		},
+	response.Data(c, http.StatusOK, "success get like count", gin.H{
+		"post_id":    postId,
+		"like_count": count,
 	})
 }

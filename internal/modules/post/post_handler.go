@@ -1,13 +1,12 @@
 package post
 
 import (
-	"errors"
-	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/configs"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/constants"
+	"github.com/ArielioBayu/go-simple-blog-v2/pkg/apperror"
 	"github.com/ArielioBayu/go-simple-blog-v2/pkg/response"
 	"github.com/gin-gonic/gin"
 )
@@ -28,27 +27,23 @@ func (h *PostHandler) CreatePost(c *gin.Context) {
 	var request PostRequest
 	err := c.ShouldBindJSON(&request)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.MessageResponse{
-			Status:  http.StatusBadRequest,
-			Message: err.Error(),
-		})
+		response.Error(c, err)
 		return
 	}
 
 	userId := c.GetInt("id")
-	err = h.postService.CreatePost(c.Request.Context(), userId, request)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, response.MessageResponse{
-			Status:  http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+	if userId == 0 {
+		response.Error(c, constants.ErrUnauthorized)
 		return
 	}
 
-	c.JSON(http.StatusCreated, response.MessageResponse{
-		Status:  http.StatusCreated,
-		Message: "Success Create Post",
-	})
+	err = h.postService.CreatePost(c.Request.Context(), userId, request)
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	response.Success(c, http.StatusCreated, "Success Create Post")
 }
 
 func (h *PostHandler) GetAllPost(c *gin.Context) {
@@ -58,10 +53,7 @@ func (h *PostHandler) GetAllPost(c *gin.Context) {
 	if pageIndexStr := c.Query("pageIndex"); pageIndexStr != "" {
 		p, err := strconv.Atoi(pageIndexStr)
 		if err != nil || p <= 0 {
-			c.JSON(http.StatusBadRequest, response.MessageResponse{
-				Status:  http.StatusBadRequest,
-				Message: "Invalid page index",
-			})
+			response.Error(c, apperror.NewBadRequest("Invalid page index", nil))
 			return
 		}
 		pageIndex = p
@@ -71,10 +63,7 @@ func (h *PostHandler) GetAllPost(c *gin.Context) {
 	if pageSizeStr := c.Query("pageSize"); pageSizeStr != "" {
 		s, err := strconv.Atoi(pageSizeStr)
 		if err != nil || s <= 0 {
-			c.JSON(http.StatusBadRequest, response.MessageResponse{
-				Status:  http.StatusBadRequest,
-				Message: "Invalid page size",
-			})
+			response.Error(c, apperror.NewBadRequest("Invalid page size", nil))
 			return
 		}
 		pageSize = s
@@ -83,33 +72,18 @@ func (h *PostHandler) GetAllPost(c *gin.Context) {
 	userID := c.GetInt("id")
 	postResp, err := h.postService.GetAllPost(ctx, pageSize, pageIndex, userID)
 	if err != nil {
-		log.Printf("GetAllPost Failed | error: %v", err)
-		c.JSON(http.StatusInternalServerError, response.MessageResponse{
-			Status:  http.StatusInternalServerError,
-			Message: "Internal server error",
-		})
+		response.Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, response.PaginationResponse{
-		Status:  http.StatusOK,
-		Message: "success get all post",
-		Pagination: &response.Pagination{
-			Limit:  postResp.Pagination.Limit,
-			Offset: postResp.Pagination.Offset,
-		},
-		Data: postResp.Data,
-	})
+	response.Paginated(c, http.StatusOK, "success get all post", postResp.Data, postResp.Pagination)
 }
 
 func (h *PostHandler) GetPersonalizedFeed(c *gin.Context) {
 	ctx := c.Request.Context()
 	userID := c.GetInt("id")
 	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, response.MessageResponse{
-			Status:  http.StatusUnauthorized,
-			Message: "unauthorized",
-		})
+		response.Error(c, constants.ErrUnauthorized)
 		return
 	}
 
@@ -141,23 +115,11 @@ func (h *PostHandler) GetPersonalizedFeed(c *gin.Context) {
 
 	postResp, err := h.postService.GetPersonalizedFeed(ctx, pageSize, pageIndex, userID)
 	if err != nil {
-		log.Printf("GetPersonalizedFeed Failed | error: %v", err)
-		c.JSON(http.StatusInternalServerError, response.MessageResponse{
-			Status:  http.StatusInternalServerError,
-			Message: "internal server error",
-		})
+		response.Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, response.PaginationResponse{
-		Status:  http.StatusOK,
-		Message: "success get personalized feed",
-		Pagination: &response.Pagination{
-			Limit:  postResp.Pagination.Limit,
-			Offset: postResp.Pagination.Offset,
-		},
-		Data: postResp.Data,
-	})
+	response.Paginated(c, http.StatusOK, "success get personalized feed", postResp.Data, postResp.Pagination)
 }
 
 func (h *PostHandler) GetPostById(c *gin.Context) {
@@ -165,45 +127,19 @@ func (h *PostHandler) GetPostById(c *gin.Context) {
 	postId := c.Param("postId")
 
 	postIdInt, err := strconv.Atoi(postId)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, response.MessageResponse{
-			Status:  http.StatusBadRequest,
-			Message: "invalid post id",
-		})
+	if err != nil || postIdInt <= 0 {
+		response.Error(c, apperror.NewBadRequest("invalid post id", nil))
 		return
 	}
 
 	userID := c.GetInt("id")
 	data, err := h.postService.GetPostById(ctx, postIdInt, userID)
 	if err != nil {
-		if errors.Is(err, constants.ErrPostNotFound) {
-			c.JSON(http.StatusNotFound, response.MessageResponse{
-				Status:  http.StatusNotFound,
-				Message: "Post Not Found",
-			})
-			return
-		}
-		if errors.Is(err, constants.ErrPrivateAccount) {
-			c.JSON(http.StatusForbidden, response.MessageResponse{
-				Status:  http.StatusForbidden,
-				Message: constants.ErrPrivateAccount.Error(),
-			})
-			return
-		}
-
-		log.Printf("GetPostById Failed | error: %v", err)
-		c.JSON(http.StatusInternalServerError, response.MessageResponse{
-			Status:  http.StatusInternalServerError,
-			Message: "internal server error",
-		})
+		response.Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, response.DataResponse{
-		Status:  http.StatusOK,
-		Message: "success get post",
-		Data:    data,
-	})
+	response.Data(c, http.StatusOK, "success get post", data)
 }
 
 func (h *PostHandler) GetPostsByUserID(c *gin.Context) {
@@ -216,10 +152,7 @@ func (h *PostHandler) GetPostsByUserID(c *gin.Context) {
 
 	targetUserID, err := strconv.Atoi(userIdParam)
 	if err != nil || targetUserID <= 0 {
-		c.JSON(http.StatusBadRequest, response.MessageResponse{
-			Status:  http.StatusBadRequest,
-			Message: "invalid user id",
-		})
+		response.Error(c, apperror.NewBadRequest("invalid user id", nil))
 		return
 	}
 
@@ -227,10 +160,7 @@ func (h *PostHandler) GetPostsByUserID(c *gin.Context) {
 	if pageIndexStr := c.Query("pageIndex"); pageIndexStr != "" {
 		p, err := strconv.Atoi(pageIndexStr)
 		if err != nil || p <= 0 {
-			c.JSON(http.StatusBadRequest, response.MessageResponse{
-				Status:  http.StatusBadRequest,
-				Message: "Invalid page index",
-			})
+			response.Error(c, apperror.NewBadRequest("Invalid page index", nil))
 			return
 		}
 		pageIndex = p
@@ -245,10 +175,7 @@ func (h *PostHandler) GetPostsByUserID(c *gin.Context) {
 	if pageSizeStr := c.Query("pageSize"); pageSizeStr != "" {
 		s, err := strconv.Atoi(pageSizeStr)
 		if err != nil || s <= 0 {
-			c.JSON(http.StatusBadRequest, response.MessageResponse{
-				Status:  http.StatusBadRequest,
-				Message: "Invalid page size",
-			})
+			response.Error(c, apperror.NewBadRequest("Invalid page size", nil))
 			return
 		}
 		pageSize = s
@@ -262,38 +189,11 @@ func (h *PostHandler) GetPostsByUserID(c *gin.Context) {
 	currentUserID := c.GetInt("id")
 	postResp, err := h.postService.GetPostsByUserID(ctx, targetUserID, currentUserID, pageSize, pageIndex)
 	if err != nil {
-		if errors.Is(err, constants.ErrUserNotFound) {
-			c.JSON(http.StatusNotFound, response.MessageResponse{
-				Status:  http.StatusNotFound,
-				Message: "user not found",
-			})
-			return
-		}
-		if errors.Is(err, constants.ErrPrivateAccount) {
-			c.JSON(http.StatusForbidden, response.MessageResponse{
-				Status:  http.StatusForbidden,
-				Message: constants.ErrPrivateAccount.Error(),
-			})
-			return
-		}
-
-		log.Printf("GetPostsByUserID Failed | error: %v", err)
-		c.JSON(http.StatusInternalServerError, response.MessageResponse{
-			Status:  http.StatusInternalServerError,
-			Message: "Internal server error",
-		})
+		response.Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, response.PaginationResponse{
-		Status:  http.StatusOK,
-		Message: "success get posts by user id",
-		Pagination: &response.Pagination{
-			Limit:  postResp.Pagination.Limit,
-			Offset: postResp.Pagination.Offset,
-		},
-		Data: postResp.Data,
-	})
+	response.Paginated(c, http.StatusOK, "success get posts by user id", postResp.Data, postResp.Pagination)
 }
 
 func (h *PostHandler) DeletePost(c *gin.Context) {
@@ -302,43 +202,16 @@ func (h *PostHandler) DeletePost(c *gin.Context) {
 	postId := c.Param("postId")
 	postIdInt, err := strconv.Atoi(postId)
 	if err != nil || postIdInt <= 0 {
-		c.JSON(http.StatusBadRequest, response.MessageResponse{
-			Status:  http.StatusBadRequest,
-			Message: "invalid post id",
-		})
+		response.Error(c, apperror.NewBadRequest("invalid post id", nil))
 		return
 	}
 
 	userId := c.GetInt("id")
 	err = h.postService.DeletePost(ctx, postIdInt, userId)
 	if err != nil {
-		if errors.Is(err, constants.ErrPostNotFound) {
-			c.JSON(http.StatusNotFound, response.MessageResponse{
-				Status:  http.StatusNotFound,
-				Message: "post not found",
-			})
-			return
-		}
-		if errors.Is(err, constants.ErrForbidden) {
-			c.JSON(http.StatusForbidden, response.MessageResponse{
-				Status:  http.StatusForbidden,
-				Message: "you are not allowed to delete this post",
-			})
-			return
-		}
-
-		log.Printf("DeletePost Failed | error: %v", err)
-		c.JSON(http.StatusInternalServerError, response.MessageResponse{
-			Status:  http.StatusInternalServerError,
-			Message: "internal server error",
-		})
+		response.Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, response.MessageResponse{
-		Status:  http.StatusOK,
-		Message: "success delete post",
-	})
+	response.Success(c, http.StatusOK, "success delete post")
 }
-
-

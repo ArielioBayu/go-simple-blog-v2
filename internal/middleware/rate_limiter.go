@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"fmt"
-	"net/http"
 	"sync"
 	"time"
 
@@ -85,10 +84,8 @@ func RateLimiter(maxRequests int, window time.Duration) gin.HandlerFunc {
 		if !allowed {
 			seconds := int(retryAfter.Seconds()) + 1
 			c.Header("Retry-After", fmt.Sprintf("%d", seconds))
-			c.AbortWithStatusJSON(http.StatusTooManyRequests, response.MessageResponse{
-				Status:  http.StatusTooManyRequests,
-				Message: constants.ErrTooManyRequests.Error(),
-			})
+			response.Error(c, constants.ErrTooManyRequests)
+			c.Abort()
 			return
 		}
 

@@ -1,13 +1,12 @@
 package follow
 
 import (
-	"errors"
-	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/configs"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/constants"
+	"github.com/ArielioBayu/go-simple-blog-v2/pkg/apperror"
 	"github.com/ArielioBayu/go-simple-blog-v2/pkg/response"
 	"github.com/ArielioBayu/go-simple-blog-v2/pkg/utils"
 	"github.com/gin-gonic/gin"
@@ -29,58 +28,19 @@ func (h *FollowHandler) FollowUser(c *gin.Context) {
 	ctx := c.Request.Context()
 	currentUserID := c.GetInt("id")
 	if currentUserID == 0 {
-		c.JSON(http.StatusUnauthorized, response.MessageResponse{
-			Status:  http.StatusUnauthorized,
-			Message: "unauthorized",
-		})
+		response.Error(c, constants.ErrUnauthorized)
 		return
 	}
 
 	targetUserID, err := strconv.Atoi(c.Param("targetUserId"))
 	if err != nil || targetUserID <= 0 {
-		c.JSON(http.StatusBadRequest, response.MessageResponse{
-			Status:  http.StatusBadRequest,
-			Message: "invalid target user id",
-		})
+		response.Error(c, apperror.NewBadRequest("invalid target user id", nil))
 		return
 	}
 
 	res, err := h.followService.FollowUser(ctx, currentUserID, targetUserID)
 	if err != nil {
-		if errors.Is(err, constants.ErrCannotFollowSelf) {
-			c.JSON(http.StatusBadRequest, response.MessageResponse{
-				Status:  http.StatusBadRequest,
-				Message: "cannot follow yourself",
-			})
-			return
-		}
-		if errors.Is(err, constants.ErrUserNotFound) {
-			c.JSON(http.StatusNotFound, response.MessageResponse{
-				Status:  http.StatusNotFound,
-				Message: "target user not found",
-			})
-			return
-		}
-		if errors.Is(err, constants.ErrAlreadyFollowing) {
-			c.JSON(http.StatusConflict, response.MessageResponse{
-				Status:  http.StatusConflict,
-				Message: "already following this user",
-			})
-			return
-		}
-		if errors.Is(err, constants.ErrFollowRequestPending) {
-			c.JSON(http.StatusConflict, response.MessageResponse{
-				Status:  http.StatusConflict,
-				Message: "follow request already sent",
-			})
-			return
-		}
-
-		log.Printf("FollowUser error: %v", err)
-		c.JSON(http.StatusInternalServerError, response.MessageResponse{
-			Status:  http.StatusInternalServerError,
-			Message: "internal server error",
-		})
+		response.Error(c, err)
 		return
 	}
 
@@ -89,123 +49,60 @@ func (h *FollowHandler) FollowUser(c *gin.Context) {
 		msg = "follow request sent"
 	}
 
-	c.JSON(http.StatusOK, response.DataResponse{
-		Status:  http.StatusOK,
-		Message: msg,
-		Data:    res,
-	})
+	response.Data(c, http.StatusOK, msg, res)
 }
 
 func (h *FollowHandler) UnfollowUser(c *gin.Context) {
 	ctx := c.Request.Context()
 	currentUserID := c.GetInt("id")
 	if currentUserID == 0 {
-		c.JSON(http.StatusUnauthorized, response.MessageResponse{
-			Status:  http.StatusUnauthorized,
-			Message: "unauthorized",
-		})
+		response.Error(c, constants.ErrUnauthorized)
 		return
 	}
 
 	targetUserID, err := strconv.Atoi(c.Param("targetUserId"))
 	if err != nil || targetUserID <= 0 {
-		c.JSON(http.StatusBadRequest, response.MessageResponse{
-			Status:  http.StatusBadRequest,
-			Message: "invalid target user id",
-		})
+		response.Error(c, apperror.NewBadRequest("invalid target user id", nil))
 		return
 	}
 
 	err = h.followService.UnfollowUser(ctx, currentUserID, targetUserID)
 	if err != nil {
-		if errors.Is(err, constants.ErrCannotFollowSelf) {
-			c.JSON(http.StatusBadRequest, response.MessageResponse{
-				Status:  http.StatusBadRequest,
-				Message: "cannot unfollow yourself",
-			})
-			return
-		}
-		if errors.Is(err, constants.ErrFollowNotFound) {
-			c.JSON(http.StatusNotFound, response.MessageResponse{
-				Status:  http.StatusNotFound,
-				Message: "follow relationship not found",
-			})
-			return
-		}
-
-		log.Printf("UnfollowUser error: %v", err)
-		c.JSON(http.StatusInternalServerError, response.MessageResponse{
-			Status:  http.StatusInternalServerError,
-			Message: "internal server error",
-		})
+		response.Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, response.MessageResponse{
-		Status:  http.StatusOK,
-		Message: "successfully unfollowed user",
-	})
+	response.Success(c, http.StatusOK, "successfully unfollowed user")
 }
 
 func (h *FollowHandler) RemoveFollower(c *gin.Context) {
 	ctx := c.Request.Context()
 	currentUserID := c.GetInt("id")
 	if currentUserID == 0 {
-		c.JSON(http.StatusUnauthorized, response.MessageResponse{
-			Status:  http.StatusUnauthorized,
-			Message: "unauthorized",
-		})
+		response.Error(c, constants.ErrUnauthorized)
 		return
 	}
 
 	followerUserID, err := strconv.Atoi(c.Param("followerUserId"))
 	if err != nil || followerUserID <= 0 {
-		c.JSON(http.StatusBadRequest, response.MessageResponse{
-			Status:  http.StatusBadRequest,
-			Message: "invalid follower user id",
-		})
+		response.Error(c, apperror.NewBadRequest("invalid follower user id", nil))
 		return
 	}
 
 	err = h.followService.RemoveFollower(ctx, currentUserID, followerUserID)
 	if err != nil {
-		if errors.Is(err, constants.ErrCannotFollowSelf) {
-			c.JSON(http.StatusBadRequest, response.MessageResponse{
-				Status:  http.StatusBadRequest,
-				Message: "cannot remove yourself",
-			})
-			return
-		}
-		if errors.Is(err, constants.ErrFollowNotFound) {
-			c.JSON(http.StatusNotFound, response.MessageResponse{
-				Status:  http.StatusNotFound,
-				Message: "follower not found",
-			})
-			return
-		}
-
-		log.Printf("RemoveFollower error: %v", err)
-		c.JSON(http.StatusInternalServerError, response.MessageResponse{
-			Status:  http.StatusInternalServerError,
-			Message: "internal server error",
-		})
+		response.Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, response.MessageResponse{
-		Status:  http.StatusOK,
-		Message: "successfully removed follower",
-	})
+	response.Success(c, http.StatusOK, "successfully removed follower")
 }
 
 func (h *FollowHandler) GetPendingRequests(c *gin.Context) {
 	ctx := c.Request.Context()
 	currentUserID := c.GetInt("id")
 	if currentUserID == 0 {
-		c.JSON(http.StatusUnauthorized, response.MessageResponse{
-			Status:  http.StatusUnauthorized,
-			Message: "unauthorized",
-		})
+		response.Error(c, constants.ErrUnauthorized)
 		return
 	}
 
@@ -214,127 +111,70 @@ func (h *FollowHandler) GetPendingRequests(c *gin.Context) {
 
 	res, err := h.followService.GetPendingRequests(ctx, currentUserID, page, limit)
 	if err != nil {
-		log.Printf("GetPendingRequests error: %v", err)
-		c.JSON(http.StatusInternalServerError, response.MessageResponse{
-			Status:  http.StatusInternalServerError,
-			Message: "internal server error",
-		})
+		response.Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"status":     http.StatusOK,
-		"message":    "success get follow requests",
-		"data":       res.Data,
-		"pagination": res.Pagination,
-	})
+	response.Paginated(c, http.StatusOK, "success get follow requests", res.Data, res.Pagination)
 }
 
 func (h *FollowHandler) AcceptFollowRequest(c *gin.Context) {
 	ctx := c.Request.Context()
 	currentUserID := c.GetInt("id")
 	if currentUserID == 0 {
-		c.JSON(http.StatusUnauthorized, response.MessageResponse{
-			Status:  http.StatusUnauthorized,
-			Message: "unauthorized",
-		})
+		response.Error(c, constants.ErrUnauthorized)
 		return
 	}
 
 	followerUserID, err := strconv.Atoi(c.Param("followerUserId"))
 	if err != nil || followerUserID <= 0 {
-		c.JSON(http.StatusBadRequest, response.MessageResponse{
-			Status:  http.StatusBadRequest,
-			Message: "invalid follower user id",
-		})
+		response.Error(c, apperror.NewBadRequest("invalid follower user id", nil))
 		return
 	}
 
 	err = h.followService.AcceptFollowRequest(ctx, currentUserID, followerUserID)
 	if err != nil {
-		if errors.Is(err, constants.ErrFollowRequestNotFound) {
-			c.JSON(http.StatusNotFound, response.MessageResponse{
-				Status:  http.StatusNotFound,
-				Message: "follow request not found",
-			})
-			return
-		}
-
-		log.Printf("AcceptFollowRequest error: %v", err)
-		c.JSON(http.StatusInternalServerError, response.MessageResponse{
-			Status:  http.StatusInternalServerError,
-			Message: "internal server error",
-		})
+		response.Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, response.MessageResponse{
-		Status:  http.StatusOK,
-		Message: "follow request accepted",
-	})
+	response.Success(c, http.StatusOK, "follow request accepted")
 }
 
 func (h *FollowHandler) RejectFollowRequest(c *gin.Context) {
 	ctx := c.Request.Context()
 	currentUserID := c.GetInt("id")
 	if currentUserID == 0 {
-		c.JSON(http.StatusUnauthorized, response.MessageResponse{
-			Status:  http.StatusUnauthorized,
-			Message: "unauthorized",
-		})
+		response.Error(c, constants.ErrUnauthorized)
 		return
 	}
 
 	followerUserID, err := strconv.Atoi(c.Param("followerUserId"))
 	if err != nil || followerUserID <= 0 {
-		c.JSON(http.StatusBadRequest, response.MessageResponse{
-			Status:  http.StatusBadRequest,
-			Message: "invalid follower user id",
-		})
+		response.Error(c, apperror.NewBadRequest("invalid follower user id", nil))
 		return
 	}
 
 	err = h.followService.RejectFollowRequest(ctx, currentUserID, followerUserID)
 	if err != nil {
-		if errors.Is(err, constants.ErrFollowRequestNotFound) {
-			c.JSON(http.StatusNotFound, response.MessageResponse{
-				Status:  http.StatusNotFound,
-				Message: "follow request not found",
-			})
-			return
-		}
-
-		log.Printf("RejectFollowRequest error: %v", err)
-		c.JSON(http.StatusInternalServerError, response.MessageResponse{
-			Status:  http.StatusInternalServerError,
-			Message: "internal server error",
-		})
+		response.Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, response.MessageResponse{
-		Status:  http.StatusOK,
-		Message: "follow request rejected",
-	})
+	response.Success(c, http.StatusOK, "follow request rejected")
 }
 
 func (h *FollowHandler) GetFollowers(c *gin.Context) {
 	ctx := c.Request.Context()
 	currentUserID := c.GetInt("id")
 	if currentUserID == 0 {
-		c.JSON(http.StatusUnauthorized, response.MessageResponse{
-			Status:  http.StatusUnauthorized,
-			Message: "unauthorized",
-		})
+		response.Error(c, constants.ErrUnauthorized)
 		return
 	}
 
 	targetUserID, err := strconv.Atoi(c.Param("userId"))
 	if err != nil || targetUserID <= 0 {
-		c.JSON(http.StatusBadRequest, response.MessageResponse{
-			Status:  http.StatusBadRequest,
-			Message: "invalid user id",
-		})
+		response.Error(c, apperror.NewBadRequest("invalid user id", nil))
 		return
 	}
 
@@ -344,54 +184,24 @@ func (h *FollowHandler) GetFollowers(c *gin.Context) {
 
 	res, err := h.followService.GetFollowers(ctx, currentUserID, targetUserID, page, limit, search)
 	if err != nil {
-		if errors.Is(err, constants.ErrUserNotFound) {
-			c.JSON(http.StatusNotFound, response.MessageResponse{
-				Status:  http.StatusNotFound,
-				Message: "user not found",
-			})
-			return
-		}
-		if errors.Is(err, constants.ErrPrivateAccount) {
-			c.JSON(http.StatusForbidden, response.MessageResponse{
-				Status:  http.StatusForbidden,
-				Message: constants.ErrPrivateAccount.Error(),
-			})
-			return
-		}
-
-		log.Printf("GetFollowers error: %v", err)
-		c.JSON(http.StatusInternalServerError, response.MessageResponse{
-			Status:  http.StatusInternalServerError,
-			Message: "internal server error",
-		})
+		response.Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"status":     http.StatusOK,
-		"message":    "success get followers",
-		"data":       res.Data,
-		"pagination": res.Pagination,
-	})
+	response.Paginated(c, http.StatusOK, "success get followers", res.Data, res.Pagination)
 }
 
 func (h *FollowHandler) GetFollowing(c *gin.Context) {
 	ctx := c.Request.Context()
 	currentUserID := c.GetInt("id")
 	if currentUserID == 0 {
-		c.JSON(http.StatusUnauthorized, response.MessageResponse{
-			Status:  http.StatusUnauthorized,
-			Message: "unauthorized",
-		})
+		response.Error(c, constants.ErrUnauthorized)
 		return
 	}
 
 	targetUserID, err := strconv.Atoi(c.Param("userId"))
 	if err != nil || targetUserID <= 0 {
-		c.JSON(http.StatusBadRequest, response.MessageResponse{
-			Status:  http.StatusBadRequest,
-			Message: "invalid user id",
-		})
+		response.Error(c, apperror.NewBadRequest("invalid user id", nil))
 		return
 	}
 
@@ -401,79 +211,32 @@ func (h *FollowHandler) GetFollowing(c *gin.Context) {
 
 	res, err := h.followService.GetFollowing(ctx, currentUserID, targetUserID, page, limit, search)
 	if err != nil {
-		if errors.Is(err, constants.ErrUserNotFound) {
-			c.JSON(http.StatusNotFound, response.MessageResponse{
-				Status:  http.StatusNotFound,
-				Message: "user not found",
-			})
-			return
-		}
-		if errors.Is(err, constants.ErrPrivateAccount) {
-			c.JSON(http.StatusForbidden, response.MessageResponse{
-				Status:  http.StatusForbidden,
-				Message: constants.ErrPrivateAccount.Error(),
-			})
-			return
-		}
-
-		log.Printf("GetFollowing error: %v", err)
-		c.JSON(http.StatusInternalServerError, response.MessageResponse{
-			Status:  http.StatusInternalServerError,
-			Message: "internal server error",
-		})
+		response.Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"status":     http.StatusOK,
-		"message":    "success get following",
-		"data":       res.Data,
-		"pagination": res.Pagination,
-	})
+	response.Paginated(c, http.StatusOK, "success get following", res.Data, res.Pagination)
 }
 
 func (h *FollowHandler) GetRelationshipStatus(c *gin.Context) {
 	ctx := c.Request.Context()
 	currentUserID := c.GetInt("id")
 	if currentUserID == 0 {
-		c.JSON(http.StatusUnauthorized, response.MessageResponse{
-			Status:  http.StatusUnauthorized,
-			Message: "unauthorized",
-		})
+		response.Error(c, constants.ErrUnauthorized)
 		return
 	}
 
 	targetUserID, err := strconv.Atoi(c.Param("userId"))
 	if err != nil || targetUserID <= 0 {
-		c.JSON(http.StatusBadRequest, response.MessageResponse{
-			Status:  http.StatusBadRequest,
-			Message: "invalid user id",
-		})
+		response.Error(c, apperror.NewBadRequest("invalid user id", nil))
 		return
 	}
 
 	res, err := h.followService.GetRelationshipStatus(ctx, currentUserID, targetUserID)
 	if err != nil {
-		if errors.Is(err, constants.ErrUserNotFound) {
-			c.JSON(http.StatusNotFound, response.MessageResponse{
-				Status:  http.StatusNotFound,
-				Message: "user not found",
-			})
-			return
-		}
-
-		log.Printf("GetRelationshipStatus error: %v", err)
-		c.JSON(http.StatusInternalServerError, response.MessageResponse{
-			Status:  http.StatusInternalServerError,
-			Message: "internal server error",
-		})
+		response.Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, response.DataResponse{
-		Status:  http.StatusOK,
-		Message: "success get relationship status",
-		Data:    res,
-	})
+	response.Data(c, http.StatusOK, "success get relationship status", res)
 }
-
