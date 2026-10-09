@@ -5,6 +5,7 @@ import (
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/activity"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/auth"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/comment"
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/follow"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/post"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/saves"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/upload"
@@ -20,7 +21,9 @@ func registerModuleRoutes(group *gin.RouterGroup, h *handlers.Handlers) {
 	activity.ActivityRoutes(group, h.Activity)
 	upload.UploadRoutes(group, h.Upload)
 	saves.SavesRoutes(group, h.Saves)
+	follow.FollowRoutes(group, h.Follow)
 }
+
 
 func SetupRoutes(r *gin.Engine, h *handlers.Handlers) {
 	// Base URL Group: /api/v1

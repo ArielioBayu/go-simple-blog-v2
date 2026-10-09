@@ -17,20 +17,26 @@ import (
 	"github.com/ArielioBayu/go-simple-blog-v2/pkg/utils"
 )
 
+type PrivacyChecker interface {
+	CanViewUserContent(ctx context.Context, viewerID, targetUserID int) (bool, error)
+}
+
 type PostService interface {
 	CreatePost(ctx context.Context, userId int, request PostRequest) error
 	GetAllPost(ctx context.Context, pageSize, pageIndex, userID int) (GetAllPostResponse, error)
+	GetPersonalizedFeed(ctx context.Context, pageSize, pageIndex, userID int) (GetAllPostResponse, error)
 	GetPostsByUserID(ctx context.Context, targetUserID, currentUserID, pageSize, pageIndex int) (GetAllPostResponse, error)
 	GetPostById(ctx context.Context, id, userID int) (*GetPostResponse, error)
 	DeletePost(ctx context.Context, postId, userId int) error
 }
 
 type postService struct {
-	cfg          *configs.Config
-	postRepo     PostRepository
-	commentRepo  comment.CommentRepository
-	activityRepo activity.ActivityRepository
-	uploadRepo   upload.UploadRepository
+	cfg            *configs.Config
+	postRepo       PostRepository
+	commentRepo    comment.CommentRepository
+	activityRepo   activity.ActivityRepository
+	uploadRepo     upload.UploadRepository
+	privacyChecker PrivacyChecker
 }
 
 func NewPostService(
@@ -39,13 +45,15 @@ func NewPostService(
 	commentRepo comment.CommentRepository,
 	activityRepo activity.ActivityRepository,
 	uploadRepo upload.UploadRepository,
+	privacyChecker PrivacyChecker,
 ) PostService {
 	return &postService{
-		cfg:          cfg,
-		postRepo:     postRepo,
-		commentRepo:  commentRepo,
-		activityRepo: activityRepo,
-		uploadRepo:   uploadRepo,
+		cfg:            cfg,
+		postRepo:       postRepo,
+		commentRepo:    commentRepo,
+		activityRepo:   activityRepo,
+		uploadRepo:     uploadRepo,
+		privacyChecker: privacyChecker,
 	}
 }
 
@@ -85,6 +93,12 @@ func (s *postService) CreatePost(ctx context.Context, userId int, request PostRe
 }
 
 func (s *postService) GetAllPost(ctx context.Context, pageSize, pageIndex, userID int) (GetAllPostResponse, error) {
+	if pageIndex < 1 {
+		pageIndex = 1
+	}
+	if pageSize < 1 || pageSize > 50 {
+		pageSize = 10
+	}
 	limit := pageSize
 	offset := pageSize * (pageIndex - 1)
 
@@ -96,7 +110,44 @@ func (s *postService) GetAllPost(ctx context.Context, pageSize, pageIndex, userI
 	return response, nil
 }
 
+func (s *postService) GetPersonalizedFeed(ctx context.Context, pageSize, pageIndex, userID int) (GetAllPostResponse, error) {
+	if pageIndex < 1 {
+		pageIndex = 1
+	}
+	if pageSize < 1 || pageSize > 50 {
+		pageSize = 10
+	}
+	limit := pageSize
+	offset := pageSize * (pageIndex - 1)
+
+	response, err := s.postRepo.GetPersonalizedFeed(ctx, limit, offset, userID)
+	if err != nil {
+		return response, fmt.Errorf("service GetPersonalizedFeed: %w", err)
+	}
+
+	return response, nil
+}
+
 func (s *postService) GetPostsByUserID(ctx context.Context, targetUserID, currentUserID, pageSize, pageIndex int) (GetAllPostResponse, error) {
+	if s.privacyChecker != nil {
+		canView, err := s.privacyChecker.CanViewUserContent(ctx, currentUserID, targetUserID)
+		if err != nil {
+			if errors.Is(err, constants.ErrUserNotFound) {
+				return GetAllPostResponse{}, constants.ErrUserNotFound
+			}
+			return GetAllPostResponse{}, fmt.Errorf("service GetPostsByUserID check privacy: %w", err)
+		}
+		if !canView {
+			return GetAllPostResponse{}, constants.ErrPrivateAccount
+		}
+	}
+
+	if pageIndex < 1 {
+		pageIndex = 1
+	}
+	if pageSize < 1 || pageSize > 50 {
+		pageSize = 10
+	}
 	limit := pageSize
 	offset := pageSize * (pageIndex - 1)
 
@@ -112,6 +163,16 @@ func (s *postService) GetPostById(ctx context.Context, id, userID int) (*GetPost
 	data, err := s.postRepo.GetPostById(ctx, id, userID)
 	if err != nil {
 		return nil, fmt.Errorf("service GetPostById: %w", err)
+	}
+
+	if s.privacyChecker != nil {
+		canView, err := s.privacyChecker.CanViewUserContent(ctx, userID, data.UserId)
+		if err != nil {
+			return nil, fmt.Errorf("service GetPostById check privacy: %w", err)
+		}
+		if !canView {
+			return nil, constants.ErrPrivateAccount
+		}
 	}
 
 	var counts int

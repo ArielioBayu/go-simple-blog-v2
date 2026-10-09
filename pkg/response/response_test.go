@@ -42,11 +42,40 @@ func TestPaginationResponse(t *testing.T) {
 	}
 }
 
+func TestBaseResponse(t *testing.T) {
+	resp := response.BaseResponse{
+		Status:    200,
+		Message:   "success",
+		RequestID: "req-abc",
+	}
+
+	bytes, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatalf("unexpected marshal error: %v", err)
+	}
+
+	var result map[string]any
+	if err := json.Unmarshal(bytes, &result); err != nil {
+		t.Fatalf("unexpected unmarshal error: %v", err)
+	}
+
+	if result["status"] != float64(200) {
+		t.Errorf("expected status 200, got %v", result["status"])
+	}
+	if result["message"] != "success" {
+		t.Errorf("expected message 'success', got %v", result["message"])
+	}
+	if result["request_id"] != "req-abc" {
+		t.Errorf("expected request_id 'req-abc', got %v", result["request_id"])
+	}
+}
+
 func TestDataResponse(t *testing.T) {
 	resp := response.DataResponse{
-		Status:  200,
-		Message: "success get post",
-		Data:    map[string]any{"id": 1, "title": "test"},
+		Status:    200,
+		Message:   "success get post",
+		RequestID: "req-xyz",
+		Data:      map[string]any{"id": 1, "title": "test"},
 	}
 
 	bytes, err := json.Marshal(resp)
@@ -64,6 +93,9 @@ func TestDataResponse(t *testing.T) {
 	}
 	if result["message"] != "success get post" {
 		t.Errorf("expected message 'success get post', got %v", result["message"])
+	}
+	if result["request_id"] != "req-xyz" {
+		t.Errorf("expected request_id 'req-xyz', got %v", result["request_id"])
 	}
 	if result["data"] == nil {
 		t.Error("expected data not to be nil")
@@ -93,3 +125,36 @@ func TestMessageResponse(t *testing.T) {
 		t.Errorf("expected message 'Success Create Post', got %v", result["message"])
 	}
 }
+
+func TestErrorResponse(t *testing.T) {
+	resp := response.ErrorResponse{
+		Status:    404,
+		Message:   "user not found",
+		Code:      "NOT_FOUND",
+		RequestID: "req-12345",
+	}
+
+	bytes, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatalf("unexpected marshal error: %v", err)
+	}
+
+	var result map[string]any
+	if err := json.Unmarshal(bytes, &result); err != nil {
+		t.Fatalf("unexpected unmarshal error: %v", err)
+	}
+
+	if result["status"] != float64(404) {
+		t.Errorf("expected status 404, got %v", result["status"])
+	}
+	if result["message"] != "user not found" {
+		t.Errorf("expected message 'user not found', got %v", result["message"])
+	}
+	if result["code"] != "NOT_FOUND" {
+		t.Errorf("expected code 'NOT_FOUND', got %v", result["code"])
+	}
+	if result["request_id"] != "req-12345" {
+		t.Errorf("expected request_id 'req-12345', got %v", result["request_id"])
+	}
+}
+

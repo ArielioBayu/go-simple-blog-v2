@@ -24,6 +24,10 @@ const (
 	DefaultUploadDir         = "./uploads"
 	UploadDir                = "./uploads"
 	MaxUploadSize            = 5 * 1024 * 1024 // 5MB
+
+	// Follow Statuses
+	FollowStatusPending  = "pending"
+	FollowStatusAccepted = "accepted"
 )
 
 var (

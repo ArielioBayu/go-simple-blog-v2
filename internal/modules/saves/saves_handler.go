@@ -1,13 +1,11 @@
 package saves
 
 import (
-	"errors"
-	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/configs"
-	"github.com/ArielioBayu/go-simple-blog-v2/internal/constants"
+	"github.com/ArielioBayu/go-simple-blog-v2/pkg/apperror"
 	"github.com/ArielioBayu/go-simple-blog-v2/pkg/response"
 	"github.com/gin-gonic/gin"
 )
@@ -28,55 +26,30 @@ func (h *SavesHandler) SavePost(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	var request SaveRequest
-	err := c.ShouldBindJSON(&request)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, response.MessageResponse{
-			Status:  http.StatusBadRequest,
-			Message: err.Error(),
-		})
+	if err := c.ShouldBindJSON(&request); err != nil {
+		response.Error(c, err)
 		return
 	}
 
 	postId, err := strconv.Atoi(c.Param("postId"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.MessageResponse{
-			Status:  http.StatusBadRequest,
-			Message: "Invalid Post Id",
-		})
+		response.Error(c, apperror.NewBadRequest("Invalid Post Id", err))
 		return
 	}
 
 	userId, exists := c.Get("id")
 	if !exists || userId.(int) == 0 {
-		c.JSON(http.StatusUnauthorized, response.MessageResponse{
-			Status:  http.StatusUnauthorized,
-			Message: "Unauthorized",
-		})
+		response.Error(c, apperror.NewUnauthorized("Unauthorized", nil))
 		return
 	}
 
 	err = h.savesService.SavePost(ctx, postId, userId.(int), request)
 	if err != nil {
-		if errors.Is(err, constants.ErrPostNotFound) {
-			c.JSON(http.StatusNotFound, response.MessageResponse{
-				Status:  http.StatusNotFound,
-				Message: "Post Not Found",
-			})
-			return
-		}
-
-		log.Printf("SavePost failed | error: %v", err)
-		c.JSON(http.StatusInternalServerError, response.MessageResponse{
-			Status:  http.StatusInternalServerError,
-			Message: "Internal server error",
-		})
+		response.Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, response.MessageResponse{
-		Status:  http.StatusOK,
-		Message: "success",
-	})
+	response.Success(c, http.StatusOK, "success")
 }
 
 func (h *SavesHandler) GetSavedPosts(c *gin.Context) {
@@ -84,10 +57,7 @@ func (h *SavesHandler) GetSavedPosts(c *gin.Context) {
 
 	userID := c.GetInt("id")
 	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, response.MessageResponse{
-			Status:  http.StatusUnauthorized,
-			Message: "Unauthorized",
-		})
+		response.Error(c, apperror.NewUnauthorized("Unauthorized", nil))
 		return
 	}
 
@@ -115,20 +85,11 @@ func (h *SavesHandler) GetSavedPosts(c *gin.Context) {
 
 	res, err := h.savesService.GetSavedPosts(ctx, userID, page, limit)
 	if err != nil {
-		log.Printf("GetSavedPosts failed | error: %v", err)
-		c.JSON(http.StatusInternalServerError, response.MessageResponse{
-			Status:  http.StatusInternalServerError,
-			Message: "Internal server error",
-		})
+		response.Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"status":     http.StatusOK,
-		"message":    "success get saved posts",
-		"data":       res.Data,
-		"pagination": res.Pagination,
-	})
+	response.Paginated(c, http.StatusOK, "success get saved posts", res.Data, res.Pagination)
 }
 
 func (h *SavesHandler) GetSavedPostIDs(c *gin.Context) {
@@ -136,27 +97,16 @@ func (h *SavesHandler) GetSavedPostIDs(c *gin.Context) {
 
 	userID := c.GetInt("id")
 	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, response.MessageResponse{
-			Status:  http.StatusUnauthorized,
-			Message: "Unauthorized",
-		})
+		response.Error(c, apperror.NewUnauthorized("Unauthorized", nil))
 		return
 	}
 
 	ids, err := h.savesService.GetSavedPostIDs(ctx, userID)
 	if err != nil {
-		log.Printf("GetSavedPostIDs failed | error: %v", err)
-		c.JSON(http.StatusInternalServerError, response.MessageResponse{
-			Status:  http.StatusInternalServerError,
-			Message: "Internal server error",
-		})
+		response.Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, response.DataResponse{
-		Status:  http.StatusOK,
-		Message: "success get saved post ids",
-		Data:    ids,
-	})
+	response.Data(c, http.StatusOK, "success get saved post ids", ids)
 }
 

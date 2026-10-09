@@ -13,4 +13,5 @@ func UserRoutes(r *gin.RouterGroup, h *UserHandler) {
 	group.GET("/profile", h.GetProfile)
 	group.GET("/profile/:id", h.GetProfileByID)
 	group.PUT("/edit/profile", h.UpdateProfile)
+	group.PUT("/privacy", h.UpdatePrivacy)
 }

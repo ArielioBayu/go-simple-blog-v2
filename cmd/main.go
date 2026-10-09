@@ -52,11 +52,12 @@ func main() {
 	services := service.InitServices(repos, cfg)
 	handlersList := handlers.InitHandlers(services, cfg)
 
-	// Setup Gin Router
-	r := gin.Default()
+	// Setup Gin Router with Request ID and Safe Panic Recovery
+	r := gin.New()
+	r.Use(middleware.RequestIDMiddleware())
+	r.Use(middleware.RecoveryMiddleware())
 	r.Use(middleware.CorsMiddleware())
 	r.Use(gin.Logger())
-	r.Use(gin.Recovery())
 
 	// Static route untuk file upload
 	r.Static("/uploads", "./uploads")

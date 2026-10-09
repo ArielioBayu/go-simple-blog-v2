@@ -6,6 +6,7 @@ import (
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/activity"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/auth"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/comment"
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/follow"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/post"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/saves"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/upload"
@@ -20,6 +21,7 @@ type Repositories struct {
 	Activity activity.ActivityRepository
 	Upload   upload.UploadRepository
 	Saves    saves.SavesRepository
+	Follow   follow.FollowRepository
 }
 
 func InitRepositories(db *sql.DB) *Repositories {
@@ -31,5 +33,7 @@ func InitRepositories(db *sql.DB) *Repositories {
 		Activity: activity.NewActivityRepository(db),
 		Upload:   upload.NewUploadRepository(db),
 		Saves:    saves.NewSavesRepository(db),
+		Follow:   follow.NewFollowRepository(db),
 	}
 }
+

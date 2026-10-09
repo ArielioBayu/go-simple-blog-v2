@@ -28,5 +28,13 @@ var (
 	ErrAccountAlreadyVerified     = errors.New("account is already verified")
 	ErrUserNotFound               = errors.New("user not found")
 	ErrTooManyRequests            = errors.New("too many requests, please try again later")
+
+	// Follow & Privacy Errors
+	ErrCannotFollowSelf       = errors.New("cannot follow yourself")
+	ErrAlreadyFollowing       = errors.New("already following this user")
+	ErrFollowRequestPending   = errors.New("follow request already sent")
+	ErrFollowNotFound         = errors.New("follow relationship not found")
+	ErrFollowRequestNotFound  = errors.New("follow request not found")
+	ErrPrivateAccount         = errors.New("this account is private. follow this account to see their posts")
 )
 

@@ -16,6 +16,7 @@ type UserRepository interface {
 	UpdateProfile(ctx context.Context, id int, req UpdateProfileRequest) (*ProfileResponse, error)
 	CheckUsernameExistsExcludeSelf(ctx context.Context, id int, username string) (bool, error)
 	UpdateUserVerification(ctx context.Context, userID int, isVerified bool) error
+	UpdatePrivacy(ctx context.Context, userID int, isPrivate bool) error
 }
 
 type userRepository struct {
@@ -27,7 +28,7 @@ func NewUserRepository(db *sql.DB) UserRepository {
 }
 
 func (r *userRepository) GetUser(ctx context.Context, email, username string) (*UserModel, error) {
-	query := `SELECT id, email, username, COALESCE(bio, ''), COALESCE(avatar_url, ''), COALESCE(banner_url, ''), is_verified, created_at, updated_at, created_by, updated_by FROM users 
+	query := `SELECT id, email, username, COALESCE(bio, ''), COALESCE(avatar_url, ''), COALESCE(banner_url, ''), is_verified, is_private, created_at, updated_at, created_by, updated_by FROM users 
 			WHERE email = ? OR username = ?`
 	row := r.db.QueryRowContext(ctx, query, email, username)
 
@@ -40,6 +41,7 @@ func (r *userRepository) GetUser(ctx context.Context, email, username string) (*
 		&response.AvatarURL,
 		&response.BannerURL,
 		&response.IsVerified,
+		&response.IsPrivate,
 		&response.CreatedAt,
 		&response.UpdatedAt,
 		&response.CreatedBy,
@@ -57,7 +59,7 @@ func (r *userRepository) GetUser(ctx context.Context, email, username string) (*
 }
 
 func (r *userRepository) GetUserById(ctx context.Context, id int) (*UserModel, error) {
-	query := `SELECT id, email, username, COALESCE(bio, ''), COALESCE(avatar_url, ''), COALESCE(banner_url, ''), is_verified, created_at, updated_at, created_by, updated_by FROM users
+	query := `SELECT id, email, username, COALESCE(bio, ''), COALESCE(avatar_url, ''), COALESCE(banner_url, ''), is_verified, is_private, created_at, updated_at, created_by, updated_by FROM users
 				WHERE id = ?`
 	row := r.db.QueryRowContext(ctx, query, id)
 
@@ -70,6 +72,7 @@ func (r *userRepository) GetUserById(ctx context.Context, id int) (*UserModel, e
 		&response.AvatarURL,
 		&response.BannerURL,
 		&response.IsVerified,
+		&response.IsPrivate,
 		&response.CreatedAt,
 		&response.UpdatedAt,
 		&response.CreatedBy,
@@ -86,7 +89,7 @@ func (r *userRepository) GetUserById(ctx context.Context, id int) (*UserModel, e
 }
 
 func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*UserModel, error) {
-	query := `SELECT id, email, password, username, COALESCE(bio, ''), COALESCE(avatar_url, ''), COALESCE(banner_url, ''), is_verified, created_at, updated_at, created_by, updated_by 
+	query := `SELECT id, email, password, username, COALESCE(bio, ''), COALESCE(avatar_url, ''), COALESCE(banner_url, ''), is_verified, is_private, created_at, updated_at, created_by, updated_by 
 				FROM users WHERE email = ?`
 	row := r.db.QueryRowContext(ctx, query, email)
 
@@ -100,6 +103,7 @@ func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*Use
 		&response.AvatarURL,
 		&response.BannerURL,
 		&response.IsVerified,
+		&response.IsPrivate,
 		&response.CreatedAt,
 		&response.UpdatedAt,
 		&response.CreatedBy,
@@ -115,9 +119,9 @@ func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*Use
 }
 
 func (r *userRepository) CreateUser(ctx context.Context, model *UserModel) error {
-	query := `INSERT INTO users (email, password, username, bio, avatar_url, banner_url, is_verified, created_at, updated_at, created_by, updated_by)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	res, err := r.db.ExecContext(ctx, query, model.Email, model.Password, model.Username, model.Bio, model.AvatarURL, model.BannerURL, model.IsVerified,
+	query := `INSERT INTO users (email, password, username, bio, avatar_url, banner_url, is_verified, is_private, created_at, updated_at, created_by, updated_by)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	res, err := r.db.ExecContext(ctx, query, model.Email, model.Password, model.Username, model.Bio, model.AvatarURL, model.BannerURL, model.IsVerified, model.IsPrivate,
 		model.CreatedAt, model.UpdatedAt, model.CreatedBy, model.UpdatedBy)
 	if err != nil {
 		return fmt.Errorf("repository create user: %w", err)
@@ -140,6 +144,38 @@ func (r *userRepository) UpdateUserVerification(ctx context.Context, userID int,
 	return nil
 }
 
+func (r *userRepository) UpdatePrivacy(ctx context.Context, userID int, isPrivate bool) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("repository UpdatePrivacy begin tx: %w", err)
+	}
+	defer func() {
+		if tx != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	query := `UPDATE users SET is_private = ?, updated_at = NOW() WHERE id = ?`
+	if _, err := tx.ExecContext(ctx, query, isPrivate, userID); err != nil {
+		return fmt.Errorf("repository UpdatePrivacy update users: %w", err)
+	}
+
+	// Instagram behavior: when changing to public, auto-approve any pending follow requests
+	if !isPrivate {
+		acceptQuery := `UPDATE user_follows SET status = 'accepted' WHERE following_id = ? AND status = 'pending'`
+		if _, err := tx.ExecContext(ctx, acceptQuery, userID); err != nil {
+			return fmt.Errorf("repository UpdatePrivacy approve pending: %w", err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("repository UpdatePrivacy commit: %w", err)
+	}
+	tx = nil
+
+	return nil
+}
+
 func (r *userRepository) GetProfile(ctx context.Context, id int) (*ProfileResponse, error) {
 	query := `SELECT 
 				u.id, 
@@ -149,9 +185,12 @@ func (r *userRepository) GetProfile(ctx context.Context, id int) (*ProfileRespon
 				COALESCE(u.avatar_url, ''), 
 				COALESCE(u.banner_url, ''), 
 				COALESCE(u.is_verified, false),
+				COALESCE(u.is_private, false),
 				u.created_at,
 				(SELECT COUNT(p.id) FROM posts p WHERE p.user_id = u.id) AS stories_count,
-				(SELECT COUNT(a.id) FROM activities a JOIN posts p ON a.post_id = p.id WHERE p.user_id = u.id AND a.is_liked = true) AS likes_count
+				(SELECT COUNT(a.id) FROM activities a JOIN posts p ON a.post_id = p.id WHERE p.user_id = u.id AND a.is_liked = true) AS likes_count,
+				(SELECT COUNT(uf1.id) FROM user_follows uf1 WHERE uf1.following_id = u.id AND uf1.status = 'accepted') AS followers_count,
+				(SELECT COUNT(uf2.id) FROM user_follows uf2 WHERE uf2.follower_id = u.id AND uf2.status = 'accepted') AS following_count
 			  FROM users u 
 			  WHERE u.id = ?`
 
@@ -164,9 +203,12 @@ func (r *userRepository) GetProfile(ctx context.Context, id int) (*ProfileRespon
 		&profile.AvatarURL,
 		&profile.BannerURL,
 		&profile.IsVerified,
+		&profile.IsPrivate,
 		&profile.CreatedAt,
 		&profile.Stats.StoriesCount,
 		&profile.Stats.LikesCount,
+		&profile.Stats.FollowersCount,
+		&profile.Stats.FollowingCount,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

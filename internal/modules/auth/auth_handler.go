@@ -1,12 +1,9 @@
 package auth
 
 import (
-	"errors"
-	"log"
 	"net/http"
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/configs"
-	"github.com/ArielioBayu/go-simple-blog-v2/internal/constants"
 	"github.com/ArielioBayu/go-simple-blog-v2/pkg/response"
 	"github.com/ArielioBayu/go-simple-blog-v2/pkg/utils"
 	"github.com/gin-gonic/gin"
@@ -28,56 +25,22 @@ func (h *AuthHandler) SignIn(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	var request SignInRequest
-	err := c.ShouldBindJSON(&request)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, response.MessageResponse{
-			Status:  http.StatusBadRequest,
-			Message: err.Error(),
-		})
+	if err := c.ShouldBindJSON(&request); err != nil {
+		response.Error(c, err)
 		return
 	}
 
 	token, refreshToken, err := h.authService.SignIn(ctx, request)
 	if err != nil {
-		if errors.Is(err, constants.ErrDataNotFound) {
-			c.JSON(http.StatusNotFound, response.MessageResponse{
-				Status:  http.StatusNotFound,
-				Message: err.Error(),
-			})
-			return
-		}
-		if errors.Is(err, constants.ErrInvalidPassword) {
-			c.JSON(http.StatusBadRequest, response.MessageResponse{
-				Status:  http.StatusBadRequest,
-				Message: err.Error(),
-			})
-			return
-		}
-		if errors.Is(err, constants.ErrAccountNotVerified) {
-			c.JSON(http.StatusForbidden, response.MessageResponse{
-				Status:  http.StatusForbidden,
-				Message: err.Error(),
-			})
-			return
-		}
-
-		log.Printf("handler sign in failed | error: %v", err)
-		c.JSON(http.StatusInternalServerError, response.MessageResponse{
-			Status:  http.StatusInternalServerError,
-			Message: "internal server error",
-		})
+		response.Error(c, err)
 		return
 	}
 
 	utils.SetAccessTokenCookie(c, token)
 
-	c.JSON(http.StatusOK, response.DataResponse{
-		Status:  http.StatusOK,
-		Message: "Success Login",
-		Data: gin.H{
-			"access_token":  token,
-			"refresh_token": refreshToken,
-		},
+	response.Data(c, http.StatusOK, "Success Login", gin.H{
+		"access_token":  token,
+		"refresh_token": refreshToken,
 	})
 }
 
@@ -86,34 +49,17 @@ func (h *AuthHandler) SignUp(c *gin.Context) {
 
 	var request SignUpRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, response.MessageResponse{
-			Status:  http.StatusBadRequest,
-			Message: err.Error(),
-		})
+		response.Error(c, err)
 		return
 	}
 
 	err := h.authService.SignUp(ctx, request)
 	if err != nil {
-		if errors.Is(err, constants.ErrUsernameOrEmailAlreadyExists) {
-			c.JSON(http.StatusConflict, response.MessageResponse{
-				Status:  http.StatusConflict,
-				Message: err.Error(),
-			})
-			return
-		}
-
-		c.JSON(http.StatusInternalServerError, response.MessageResponse{
-			Status:  http.StatusInternalServerError,
-			Message: err.Error(),
-		})
+		response.Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusCreated, response.MessageResponse{
-		Status:  http.StatusCreated,
-		Message: "success created data, please check your email for the OTP verification code",
-	})
+	response.Success(c, http.StatusCreated, "success created data, please check your email for the OTP verification code")
 }
 
 func (h *AuthHandler) VerifyOTP(c *gin.Context) {
@@ -121,48 +67,17 @@ func (h *AuthHandler) VerifyOTP(c *gin.Context) {
 
 	var request VerifyOTPRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, response.MessageResponse{
-			Status:  http.StatusBadRequest,
-			Message: err.Error(),
-		})
+		response.Error(c, err)
 		return
 	}
 
 	err := h.authService.VerifyOTP(ctx, request)
 	if err != nil {
-		switch {
-		case errors.Is(err, constants.ErrUserNotFound):
-			c.JSON(http.StatusNotFound, response.MessageResponse{
-				Status:  http.StatusNotFound,
-				Message: err.Error(),
-			})
-			return
-		case errors.Is(err, constants.ErrAccountAlreadyVerified):
-			c.JSON(http.StatusBadRequest, response.MessageResponse{
-				Status:  http.StatusBadRequest,
-				Message: err.Error(),
-			})
-			return
-		case errors.Is(err, constants.ErrInvalidOrExpiredOTP):
-			c.JSON(http.StatusBadRequest, response.MessageResponse{
-				Status:  http.StatusBadRequest,
-				Message: err.Error(),
-			})
-			return
-		default:
-			log.Printf("handler verify otp failed | error: %v", err)
-			c.JSON(http.StatusInternalServerError, response.MessageResponse{
-				Status:  http.StatusInternalServerError,
-				Message: "internal server error",
-			})
-			return
-		}
+		response.Error(c, err)
+		return
 	}
 
-	c.JSON(http.StatusOK, response.MessageResponse{
-		Status:  http.StatusOK,
-		Message: "email successfully verified, please login",
-	})
+	response.Success(c, http.StatusOK, "email successfully verified, please login")
 }
 
 func (h *AuthHandler) ResendOTP(c *gin.Context) {
@@ -170,124 +85,42 @@ func (h *AuthHandler) ResendOTP(c *gin.Context) {
 
 	var request ResendOTPRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
-		c.JSON(http.StatusBadRequest, response.MessageResponse{
-			Status:  http.StatusBadRequest,
-			Message: err.Error(),
-		})
+		response.Error(c, err)
 		return
 	}
 
 	err := h.authService.ResendOTP(ctx, request)
 	if err != nil {
-		switch {
-		case errors.Is(err, constants.ErrUserNotFound):
-			c.JSON(http.StatusNotFound, response.MessageResponse{
-				Status:  http.StatusNotFound,
-				Message: err.Error(),
-			})
-			return
-		case errors.Is(err, constants.ErrAccountAlreadyVerified):
-			c.JSON(http.StatusBadRequest, response.MessageResponse{
-				Status:  http.StatusBadRequest,
-				Message: err.Error(),
-			})
-			return
-		default:
-			log.Printf("handler resend otp failed | error: %v", err)
-			c.JSON(http.StatusInternalServerError, response.MessageResponse{
-				Status:  http.StatusInternalServerError,
-				Message: "internal server error",
-			})
-			return
-		}
+		response.Error(c, err)
+		return
 	}
 
-	c.JSON(http.StatusOK, response.MessageResponse{
-		Status:  http.StatusOK,
-		Message: "new OTP verification code has been sent to your email",
-	})
+	response.Success(c, http.StatusOK, "new OTP verification code has been sent to your email")
 }
 
 func (h *AuthHandler) Refresh(c *gin.Context) {
 	ctx := c.Request.Context()
 
 	var request RefreshTokenRequest
-	err := c.ShouldBindJSON(&request)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, response.MessageResponse{
-			Status:  http.StatusBadRequest,
-			Message: err.Error(),
-		})
+	if err := c.ShouldBindJSON(&request); err != nil {
+		response.Error(c, err)
 		return
 	}
 
 	refreshToken, err := h.authService.GetIdRefreshToken(ctx, request)
 	if err != nil {
-		switch {
-		case errors.Is(err, constants.ErrRefreshTokenNotFound), errors.Is(err, constants.ErrDataNotFound):
-			c.JSON(http.StatusNotFound, response.MessageResponse{
-				Status:  http.StatusNotFound,
-				Message: err.Error(),
-			})
-			return
-
-		case errors.Is(err, constants.ErrInvalidToken):
-			c.JSON(http.StatusUnauthorized, response.MessageResponse{
-				Status:  http.StatusUnauthorized,
-				Message: err.Error(),
-			})
-			return
-
-		default:
-			log.Printf("handler refresh failed | error: %v", err)
-			c.JSON(http.StatusInternalServerError, response.MessageResponse{
-				Status:  http.StatusInternalServerError,
-				Message: "internal server error",
-			})
-			return
-		}
+		response.Error(c, err)
+		return
 	}
 
 	token, err := h.authService.ValidateRefreshToken(ctx, refreshToken.UserId, request)
 	if err != nil {
-		switch {
-		case errors.Is(err, constants.ErrRefreshTokenNotFound), errors.Is(err, constants.ErrDataNotFound):
-			c.JSON(http.StatusNotFound, response.MessageResponse{
-				Status:  http.StatusNotFound,
-				Message: err.Error(),
-			})
-			return
-
-		case errors.Is(err, constants.ErrTokenExpired):
-			c.JSON(http.StatusUnauthorized, response.MessageResponse{
-				Status:  http.StatusUnauthorized,
-				Message: err.Error(),
-			})
-			return
-
-		case errors.Is(err, constants.ErrInvalidToken):
-			c.JSON(http.StatusUnauthorized, response.MessageResponse{
-				Status:  http.StatusUnauthorized,
-				Message: err.Error(),
-			})
-			return
-
-		default:
-			log.Printf("handler refresh failed | error: %v", err)
-			c.JSON(http.StatusInternalServerError, response.MessageResponse{
-				Status:  http.StatusInternalServerError,
-				Message: "internal server error",
-			})
-			return
-		}
+		response.Error(c, err)
+		return
 	}
 
-	c.JSON(http.StatusOK, response.DataResponse{
-		Status:  http.StatusOK,
-		Message: "success refresh token",
-		Data: gin.H{
-			"access_token": token,
-		},
+	response.Data(c, http.StatusOK, "success refresh token", gin.H{
+		"access_token": token,
 	})
 }
 
@@ -301,9 +134,5 @@ func (h *AuthHandler) SignOut(c *gin.Context) {
 
 	utils.ClearCookie(c, "access_token")
 
-	c.JSON(http.StatusOK, response.MessageResponse{
-		Status:  http.StatusOK,
-		Message: "success logout",
-	})
+	response.Success(c, http.StatusOK, "success logout")
 }
-

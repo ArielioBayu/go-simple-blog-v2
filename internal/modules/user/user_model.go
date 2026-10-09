@@ -11,6 +11,7 @@ type UserModel struct {
 	AvatarURL  string    `column:"avatar_url"`
 	BannerURL  string    `column:"banner_url"`
 	IsVerified bool      `column:"is_verified"`
+	IsPrivate  bool      `column:"is_private"`
 	Password   string    `column:"password"`
 	CreatedAt  time.Time `column:"created_at"`
 	UpdatedAt  time.Time `column:"updated_at"`
@@ -27,6 +28,7 @@ type UserResponse struct {
 	AvatarURL  string    `json:"avatar_url"`
 	BannerURL  string    `json:"banner_url"`
 	IsVerified bool      `json:"is_verified"`
+	IsPrivate  bool      `json:"is_private"`
 	CreatedAt  time.Time `json:"created_at"`
 }
 
@@ -46,6 +48,7 @@ type ProfileResponse struct {
 	AvatarURL  string       `json:"avatar_url"`
 	BannerURL  string       `json:"banner_url"`
 	IsVerified bool         `json:"is_verified"`
+	IsPrivate  bool         `json:"is_private"`
 	CreatedAt  time.Time    `json:"created_at"`
 	Stats      ProfileStats `json:"stats"`
 }
@@ -56,3 +59,8 @@ type UpdateProfileRequest struct {
 	AvatarURL string `json:"avatar_url"`
 	BannerURL string `json:"banner_url"`
 }
+
+type UpdatePrivacyRequest struct {
+	IsPrivate *bool `json:"is_private" binding:"required"`
+}
+

@@ -1,11 +1,10 @@
 package upload
 
 import (
-	"errors"
-	"log"
 	"net/http"
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/configs"
+	"github.com/ArielioBayu/go-simple-blog-v2/pkg/apperror"
 	"github.com/ArielioBayu/go-simple-blog-v2/pkg/response"
 	"github.com/ArielioBayu/go-simple-blog-v2/pkg/utils"
 	"github.com/gin-gonic/gin"
@@ -28,10 +27,7 @@ func (h *UploadHandler) UploadFile(c *gin.Context) {
 
 	userID := c.GetInt("id")
 	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, response.MessageResponse{
-			Status:  http.StatusUnauthorized,
-			Message: "unauthorized",
-		})
+		response.Error(c, apperror.NewUnauthorized("unauthorized", nil))
 		return
 	}
 
@@ -40,10 +36,7 @@ func (h *UploadHandler) UploadFile(c *gin.Context) {
 
 	file, err := c.FormFile("file")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, response.MessageResponse{
-			Status:  http.StatusBadRequest,
-			Message: "File is required (key: 'file') and must be under 5MB",
-		})
+		response.Error(c, apperror.NewBadRequest("File is required (key: 'file') and must be under 5MB", err))
 		return
 	}
 
@@ -58,27 +51,11 @@ func (h *UploadHandler) UploadFile(c *gin.Context) {
 
 	res, err := h.uploadService.UploadImage(ctx, userID, file, scheme, host)
 	if err != nil {
-		if errors.Is(err, utils.ErrFileRequired) || errors.Is(err, utils.ErrFileTooLarge) || errors.Is(err, utils.ErrInvalidFormat) {
-			c.JSON(http.StatusBadRequest, response.MessageResponse{
-				Status:  http.StatusBadRequest,
-				Message: err.Error(),
-			})
-			return
-		}
-
-		log.Printf("UploadFile error: %v", err)
-		c.JSON(http.StatusInternalServerError, response.MessageResponse{
-			Status:  http.StatusInternalServerError,
-			Message: "Failed to upload file",
-		})
+		response.Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusCreated, response.DataResponse{
-		Status:  http.StatusCreated,
-		Message: "file uploaded successfully",
-		Data:    res,
-	})
+	response.Data(c, http.StatusCreated, "file uploaded successfully", res)
 }
 
 func (h *UploadHandler) GetMyUploads(c *gin.Context) {
@@ -86,26 +63,15 @@ func (h *UploadHandler) GetMyUploads(c *gin.Context) {
 
 	userID := c.GetInt("id")
 	if userID == 0 {
-		c.JSON(http.StatusUnauthorized, response.MessageResponse{
-			Status:  http.StatusUnauthorized,
-			Message: "unauthorized",
-		})
+		response.Error(c, apperror.NewUnauthorized("unauthorized", nil))
 		return
 	}
 
 	uploads, err := h.uploadService.GetUserUploads(ctx, userID)
 	if err != nil {
-		log.Printf("GetMyUploads error: %v", err)
-		c.JSON(http.StatusInternalServerError, response.MessageResponse{
-			Status:  http.StatusInternalServerError,
-			Message: "internal server error",
-		})
+		response.Error(c, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, response.DataResponse{
-		Status:  http.StatusOK,
-		Message: "success get user uploads",
-		Data:    uploads,
-	})
+	response.Data(c, http.StatusOK, "success get user uploads", uploads)
 }

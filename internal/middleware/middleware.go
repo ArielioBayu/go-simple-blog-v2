@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"net/http"
 	"strings"
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/configs"
@@ -34,19 +33,15 @@ func AuthMiddleware() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		tokenStr := extractToken(ctx)
 		if tokenStr == "" {
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, response.MessageResponse{
-				Status:  http.StatusUnauthorized,
-				Message: constants.ErrMissingToken.Error(),
-			})
+			response.Error(ctx, constants.ErrMissingToken)
+			ctx.Abort()
 			return
 		}
 
 		id, username, err := jwt.ValidateToken(tokenStr, secretKey)
 		if err != nil {
-			ctx.AbortWithStatusJSON(http.StatusUnauthorized, response.MessageResponse{
-				Status:  http.StatusUnauthorized,
-				Message: constants.ErrInvalidToken.Error(),
-			})
+			response.Error(ctx, constants.ErrInvalidToken)
+			ctx.Abort()
 			return
 		}
 		ctx.Set("id", id)
