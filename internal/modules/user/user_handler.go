@@ -148,3 +148,25 @@ func (h *UserHandler) UpdatePrivacy(c *gin.Context) {
 		"is_private": *req.IsPrivate,
 	})
 }
+
+func (h *UserHandler) SearchUsers(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	query := c.Query("name")
+	if query == "" {
+		query = c.Query("search")
+	}
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+
+	viewerID := c.GetInt("id")
+
+	res, err := h.userService.SearchUsers(ctx, viewerID, query, page, limit)
+	if err != nil {
+		response.Error(c, err)
+		return
+	}
+
+	response.Paginated(c, http.StatusOK, "success search users", res.Data, res.Pagination)
+}

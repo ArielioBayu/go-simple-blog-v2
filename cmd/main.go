@@ -56,7 +56,7 @@ func main() {
 	r := gin.New()
 	r.Use(middleware.RequestIDMiddleware())
 	r.Use(middleware.RecoveryMiddleware())
-	r.Use(middleware.CorsMiddleware())
+	r.Use(middleware.CorsMiddleware(cfg.Service.FrontendURL))
 	r.Use(gin.Logger())
 
 	// Static route untuk file upload

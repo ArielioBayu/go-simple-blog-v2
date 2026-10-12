@@ -12,8 +12,10 @@ type (
 		SMTP     SMTP     `mapstructure:"smtp"`
 	}
 	Service struct {
-		SecretKey string `mapstructure:"secret_key"`
-		Port      string `mapstructure:"port"`
+		SecretKey   string `mapstructure:"secret_key"`
+		Port        string `mapstructure:"port"`
+		AppURL      string `mapstructure:"app_url"`
+		FrontendURL string `mapstructure:"frontend_url"`
 	}
 
 	Database struct {

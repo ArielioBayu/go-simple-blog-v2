@@ -64,3 +64,25 @@ type UpdatePrivacyRequest struct {
 	IsPrivate *bool `json:"is_private" binding:"required"`
 }
 
+type SearchUserItem struct {
+	ID          int64  `json:"id"`
+	Username    string `json:"username"`
+	Bio         string `json:"bio"`
+	AvatarURL   string `json:"avatar_url"`
+	IsVerified  bool   `json:"is_verified"`
+	IsPrivate   bool   `json:"is_private"`
+	IsFollowing bool   `json:"is_following"`
+}
+
+type SearchUserPagination struct {
+	Page      int `json:"page"`
+	Limit     int `json:"limit"`
+	TotalPage int `json:"total_page"`
+	TotalData int `json:"total_data"`
+}
+
+type SearchUserResponse struct {
+	Data       []SearchUserItem     `json:"data"`
+	Pagination SearchUserPagination `json:"pagination"`
+}
+

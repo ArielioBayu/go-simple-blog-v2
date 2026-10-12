@@ -2,6 +2,7 @@ package user
 
 import (
 	"context"
+	"math"
 	"strings"
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/configs"
@@ -14,6 +15,7 @@ type UserService interface {
 	GetProfileByID(ctx context.Context, id int) (*ProfileResponse, error)
 	UpdateProfile(ctx context.Context, id int, req UpdateProfileRequest) (*ProfileResponse, error)
 	UpdatePrivacy(ctx context.Context, id int, req UpdatePrivacyRequest) error
+	SearchUsers(ctx context.Context, viewerID int, query string, page, limit int) (*SearchUserResponse, error)
 }
 
 type userService struct {
@@ -69,5 +71,51 @@ func (s *userService) UpdatePrivacy(ctx context.Context, id int, req UpdatePriva
 		return constants.ErrDataNotFound
 	}
 	return s.userRepo.UpdatePrivacy(ctx, id, *req.IsPrivate)
+}
+
+func (s *userService) SearchUsers(ctx context.Context, viewerID int, query string, page, limit int) (*SearchUserResponse, error) {
+	query = strings.TrimSpace(query)
+
+	if page <= 0 {
+		page = 1
+	}
+	if limit <= 0 {
+		limit = 10
+	} else if limit > 50 {
+		limit = 50
+	}
+
+	if query == "" {
+		return &SearchUserResponse{
+			Data: []SearchUserItem{},
+			Pagination: SearchUserPagination{
+				Page:      page,
+				Limit:     limit,
+				TotalPage: 0,
+				TotalData: 0,
+			},
+		}, nil
+	}
+
+	offset := (page - 1) * limit
+	items, total, err := s.userRepo.SearchUsers(ctx, viewerID, query, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	totalPage := 0
+	if total > 0 {
+		totalPage = int(math.Ceil(float64(total) / float64(limit)))
+	}
+
+	return &SearchUserResponse{
+		Data: items,
+		Pagination: SearchUserPagination{
+			Page:      page,
+			Limit:     limit,
+			TotalPage: totalPage,
+			TotalData: total,
+		},
+	}, nil
 }
 

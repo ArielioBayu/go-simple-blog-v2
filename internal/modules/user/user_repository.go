@@ -17,6 +17,7 @@ type UserRepository interface {
 	CheckUsernameExistsExcludeSelf(ctx context.Context, id int, username string) (bool, error)
 	UpdateUserVerification(ctx context.Context, userID int, isVerified bool) error
 	UpdatePrivacy(ctx context.Context, userID int, isPrivate bool) error
+	SearchUsers(ctx context.Context, viewerID int, query string, limit, offset int) ([]SearchUserItem, int, error)
 }
 
 type userRepository struct {
@@ -247,4 +248,66 @@ func (r *userRepository) UpdateProfile(ctx context.Context, id int, req UpdatePr
 	}
 
 	return r.GetProfile(ctx, id)
+}
+
+func (r *userRepository) SearchUsers(ctx context.Context, viewerID int, search string, limit, offset int) ([]SearchUserItem, int, error) {
+	likePattern := "%" + search + "%"
+	prefixPattern := search + "%"
+
+	countQuery := `SELECT COUNT(1) FROM users WHERE (username LIKE ? OR bio LIKE ?) AND id != ?`
+	var total int
+	if err := r.db.QueryRowContext(ctx, countQuery, likePattern, likePattern, viewerID).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("repository SearchUsers count: %w", err)
+	}
+
+	if total == 0 {
+		return []SearchUserItem{}, 0, nil
+	}
+
+	selectQuery := `SELECT 
+				u.id, 
+				u.username, 
+				COALESCE(u.bio, ''), 
+				COALESCE(u.avatar_url, ''), 
+				COALESCE(u.is_verified, false), 
+				COALESCE(u.is_private, false),
+				EXISTS(
+					SELECT 1 FROM user_follows uf 
+					WHERE uf.follower_id = ? AND uf.following_id = u.id AND uf.status = 'accepted'
+				) AS is_following
+			FROM users u
+			WHERE (u.username LIKE ? OR u.bio LIKE ?) AND u.id != ?
+			ORDER BY 
+				CASE WHEN u.username LIKE ? THEN 1 ELSE 2 END,
+				u.username ASC
+			LIMIT ? OFFSET ?`
+
+	rows, err := r.db.QueryContext(ctx, selectQuery, viewerID, likePattern, likePattern, viewerID, prefixPattern, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("repository SearchUsers select: %w", err)
+	}
+	defer rows.Close()
+
+	items := make([]SearchUserItem, 0, limit)
+	for rows.Next() {
+		var item SearchUserItem
+		if err := rows.Scan(
+			&item.ID,
+			&item.Username,
+			&item.Bio,
+			&item.AvatarURL,
+			&item.IsVerified,
+			&item.IsPrivate,
+			&item.IsFollowing,
+		); err != nil {
+			return nil, 0, fmt.Errorf("repository SearchUsers scan: %w", err)
+		}
+		items = append(items, item)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("repository SearchUsers rows: %w", err)
+	}
+
+	return items, total, nil
 }
