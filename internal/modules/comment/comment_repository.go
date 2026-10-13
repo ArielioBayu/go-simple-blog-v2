@@ -29,6 +29,8 @@ type CommentRepository interface {
 	GetReplyAuthInfo(ctx context.Context, replyId int) (*ReplyAuthInfo, error)
 	UpdateReply(ctx context.Context, replyId int, content string) error
 	DeleteReply(ctx context.Context, replyId int) error
+
+	GetPostAuthorID(ctx context.Context, postId int) (int64, error)
 }
 
 type commentRepository struct {
@@ -37,6 +39,16 @@ type commentRepository struct {
 
 func NewCommentRepository(db *sql.DB) CommentRepository {
 	return &commentRepository{db: db}
+}
+
+func (r *commentRepository) GetPostAuthorID(ctx context.Context, postId int) (int64, error) {
+	query := `SELECT user_id FROM posts WHERE id = ? LIMIT 1`
+	var authorID int64
+	err := r.db.QueryRowContext(ctx, query, postId).Scan(&authorID)
+	if err != nil {
+		return 0, fmt.Errorf("repository GetPostAuthorID: %w", err)
+	}
+	return authorID, nil
 }
 
 func (r *commentRepository) CreateComment(ctx context.Context, model CommentModel) error {

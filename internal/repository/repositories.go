@@ -7,6 +7,7 @@ import (
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/auth"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/comment"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/follow"
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/notification"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/post"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/saves"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/upload"
@@ -14,26 +15,28 @@ import (
 )
 
 type Repositories struct {
-	Auth     auth.AuthRepository
-	User     user.UserRepository
-	Post     post.PostRepository
-	Comment  comment.CommentRepository
-	Activity activity.ActivityRepository
-	Upload   upload.UploadRepository
-	Saves    saves.SavesRepository
-	Follow   follow.FollowRepository
+	Auth         auth.AuthRepository
+	User         user.UserRepository
+	Post         post.PostRepository
+	Comment      comment.CommentRepository
+	Activity     activity.ActivityRepository
+	Upload       upload.UploadRepository
+	Saves        saves.SavesRepository
+	Follow       follow.FollowRepository
+	Notification notification.NotificationRepository
 }
 
 func InitRepositories(db *sql.DB) *Repositories {
 	return &Repositories{
-		Auth:     auth.NewAuthRepository(db),
-		User:     user.NewUserRepository(db),
-		Post:     post.NewPostRepository(db),
-		Comment:  comment.NewCommentRepository(db),
-		Activity: activity.NewActivityRepository(db),
-		Upload:   upload.NewUploadRepository(db),
-		Saves:    saves.NewSavesRepository(db),
-		Follow:   follow.NewFollowRepository(db),
+		Auth:         auth.NewAuthRepository(db),
+		User:         user.NewUserRepository(db),
+		Post:         post.NewPostRepository(db),
+		Comment:      comment.NewCommentRepository(db),
+		Activity:     activity.NewActivityRepository(db),
+		Upload:       upload.NewUploadRepository(db),
+		Saves:        saves.NewSavesRepository(db),
+		Follow:       follow.NewFollowRepository(db),
+		Notification: notification.NewNotificationRepository(db),
 	}
 }
 

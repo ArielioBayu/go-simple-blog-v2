@@ -12,29 +12,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/constants"
 	"github.com/gin-gonic/gin"
 )
 
 type JsonTime time.Time
-
-const (
-	layout                   = "2006-01-02 15:04:05"
-	OTPTypeEmailVerification = "EMAIL_VERIFICATION"
-	OTPExpirationDuration    = 5 * time.Minute
-	DefaultUploadDir         = "./uploads"
-	UploadDir                = "./uploads"
-	MaxUploadSize            = 5 * 1024 * 1024 // 5MB
-
-	// Follow Statuses
-	FollowStatusPending  = "pending"
-	FollowStatusAccepted = "accepted"
-)
-
-var (
-	ErrFileRequired  = errors.New("file is required (key: 'file')")
-	ErrFileTooLarge  = errors.New("file size exceeds 5MB limit")
-	ErrInvalidFormat = errors.New("invalid file format. Allowed formats: jpg, jpeg, png, webp, gif")
-)
 
 var AllowedMIMETypes = map[string]string{
 	"image/jpeg": ".jpg",
@@ -44,12 +26,12 @@ var AllowedMIMETypes = map[string]string{
 }
 
 func (t JsonTime) MarshalJSON() ([]byte, error) {
-	formatted := time.Time(t).Format(layout)
+	formatted := time.Time(t).Format(constants.LayoutDateTime)
 	return []byte(`"` + formatted + `"`), nil
 }
 
 func (t *JsonTime) UnmarshalJSON(data []byte) error {
-	parsed, err := time.Parse(`"`+layout+`"`, string(data))
+	parsed, err := time.Parse(`"`+constants.LayoutDateTime+`"`, string(data))
 	if err != nil {
 		return err
 	}
@@ -81,7 +63,7 @@ func (t *JsonTime) Scan(src any) error {
 
 func (t *JsonTime) parseString(str string) error {
 	layouts := []string{
-		layout,
+		constants.LayoutDateTime,
 		time.RFC3339,
 		"2006-01-02 15:04:05.000000",
 		"2006-01-02",
@@ -146,7 +128,7 @@ func RemoveUploadFile(filenameOrPath string, uploadDirs ...string) error {
 		return nil
 	}
 
-	uploadDir := DefaultUploadDir
+	uploadDir := constants.DefaultUploadDir
 	if len(uploadDirs) > 0 && uploadDirs[0] != "" {
 		uploadDir = uploadDirs[0]
 	}

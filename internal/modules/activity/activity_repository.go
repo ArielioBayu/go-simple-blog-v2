@@ -3,6 +3,7 @@ package activity
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 )
 
@@ -10,6 +11,8 @@ type ActivityRepository interface {
 	CountLikedByPostID(ctx context.Context, postId int) (int, error)
 	GetActivities(ctx context.Context, postId, userId int) (*ActivityModel, error)
 	UpsertActivities(ctx context.Context, model ActivityModel) error
+	GetPostAuthorID(ctx context.Context, postId int) (int64, error)
+	CheckPostExists(ctx context.Context, postId int) (bool, error)
 }
 
 type activityRepository struct {
@@ -18,6 +21,16 @@ type activityRepository struct {
 
 func NewActivityRepository(db *sql.DB) ActivityRepository {
 	return &activityRepository{db: db}
+}
+
+func (r *activityRepository) GetPostAuthorID(ctx context.Context, postId int) (int64, error) {
+	query := `SELECT user_id FROM posts WHERE id = ? LIMIT 1`
+	var authorID int64
+	err := r.db.QueryRowContext(ctx, query, postId).Scan(&authorID)
+	if err != nil {
+		return 0, fmt.Errorf("repository GetPostAuthorID: %w", err)
+	}
+	return authorID, nil
 }
 
 func (r *activityRepository) CountLikedByPostID(ctx context.Context, postId int) (int, error) {
@@ -71,4 +84,17 @@ func (r *activityRepository) UpsertActivities(ctx context.Context, model Activit
 		return fmt.Errorf("repository UpsertActivities: %w", err)
 	}
 	return nil
+}
+
+func (r *activityRepository) CheckPostExists(ctx context.Context, postId int) (bool, error) {
+	query := `SELECT 1 FROM posts WHERE id = ? LIMIT 1`
+	var exists int
+	err := r.db.QueryRowContext(ctx, query, postId).Scan(&exists)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, fmt.Errorf("repository CheckPostExists: %w", err)
+	}
+	return true, nil
 }

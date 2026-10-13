@@ -6,7 +6,7 @@ import (
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/configs"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/constants"
-	"github.com/ArielioBayu/go-simple-blog-v2/pkg/utils"
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/notification"
 )
 
 type FollowService interface {
@@ -25,12 +25,18 @@ type FollowService interface {
 type followService struct {
 	cfg        *configs.Config
 	followRepo FollowRepository
+	notifSvc   notification.NotificationService
 }
 
-func NewFollowService(cfg *configs.Config, followRepo FollowRepository) FollowService {
+func NewFollowService(cfg *configs.Config, followRepo FollowRepository, notifSvc ...notification.NotificationService) FollowService {
+	var svc notification.NotificationService
+	if len(notifSvc) > 0 {
+		svc = notifSvc[0]
+	}
 	return &followService{
 		cfg:        cfg,
 		followRepo: followRepo,
+		notifSvc:   svc,
 	}
 }
 
@@ -53,10 +59,10 @@ func (s *followService) FollowUser(ctx context.Context, currentUserID, targetUse
 		return nil, fmt.Errorf("service FollowUser check record: %w", err)
 	}
 	if existing != nil {
-		if existing.Status == utils.FollowStatusAccepted {
+		if existing.Status == constants.FollowStatusAccepted {
 			return nil, constants.ErrAlreadyFollowing
 		}
-		if existing.Status == utils.FollowStatusPending {
+		if existing.Status == constants.FollowStatusPending {
 			return nil, constants.ErrFollowRequestPending
 		}
 	}
@@ -66,20 +72,42 @@ func (s *followService) FollowUser(ctx context.Context, currentUserID, targetUse
 		return nil, fmt.Errorf("service FollowUser check privacy: %w", err)
 	}
 
-	status := utils.FollowStatusAccepted
+	status := constants.FollowStatusAccepted
 	if isPrivate {
-		status = utils.FollowStatusPending
+		status = constants.FollowStatusPending
 	}
 
 	if err := s.followRepo.FollowUser(ctx, currentUserID, targetUserID, status); err != nil {
 		return nil, fmt.Errorf("service FollowUser: %w", err)
 	}
 
+	if s.notifSvc != nil {
+		if status == constants.FollowStatusAccepted {
+			_ = s.notifSvc.CreateNotification(ctx, notification.CreateNotificationInput{
+				UserID:     int64(targetUserID),
+				ActorID:    int64(currentUserID),
+				Type:       notification.NotificationTypeFollow,
+				EntityID:   int64(currentUserID),
+				EntityType: notification.EntityTypeUser,
+				Message:    constants.MsgFollow,
+			})
+		} else if status == constants.FollowStatusPending {
+			_ = s.notifSvc.CreateNotification(ctx, notification.CreateNotificationInput{
+				UserID:     int64(targetUserID),
+				ActorID:    int64(currentUserID),
+				Type:       notification.NotificationTypeFollowRequest,
+				EntityID:   int64(currentUserID),
+				EntityType: notification.EntityTypeUser,
+				Message:    constants.MsgFollowRequest,
+			})
+		}
+	}
+
 	return &FollowActionResponse{
 		TargetUserID: targetUserID,
 		Status:       status,
-		IsFollowing:  status == utils.FollowStatusAccepted,
-		IsPending:    status == utils.FollowStatusPending,
+		IsFollowing:  status == constants.FollowStatusAccepted,
+		IsPending:    status == constants.FollowStatusPending,
 	}, nil
 }
 
@@ -87,7 +115,14 @@ func (s *followService) UnfollowUser(ctx context.Context, currentUserID, targetU
 	if currentUserID == targetUserID {
 		return constants.ErrCannotFollowSelf
 	}
-	return s.followRepo.UnfollowUser(ctx, currentUserID, targetUserID)
+	if err := s.followRepo.UnfollowUser(ctx, currentUserID, targetUserID); err != nil {
+		return err
+	}
+	if s.notifSvc != nil {
+		_ = s.notifSvc.DeleteNotification(ctx, int64(currentUserID), notification.NotificationTypeFollow, int64(currentUserID))
+		_ = s.notifSvc.DeleteNotification(ctx, int64(currentUserID), notification.NotificationTypeFollowRequest, int64(currentUserID))
+	}
+	return nil
 }
 
 func (s *followService) RemoveFollower(ctx context.Context, currentUserID, followerUserID int) error {
@@ -131,14 +166,34 @@ func (s *followService) AcceptFollowRequest(ctx context.Context, currentUserID, 
 	if currentUserID == followerUserID {
 		return constants.ErrCannotFollowSelf
 	}
-	return s.followRepo.AcceptFollowRequest(ctx, currentUserID, followerUserID)
+	if err := s.followRepo.AcceptFollowRequest(ctx, currentUserID, followerUserID); err != nil {
+		return err
+	}
+	if s.notifSvc != nil {
+		_ = s.notifSvc.DeleteNotification(ctx, int64(followerUserID), notification.NotificationTypeFollowRequest, int64(followerUserID))
+		_ = s.notifSvc.CreateNotification(ctx, notification.CreateNotificationInput{
+			UserID:     int64(currentUserID),
+			ActorID:    int64(followerUserID),
+			Type:       notification.NotificationTypeFollow,
+			EntityID:   int64(followerUserID),
+			EntityType: notification.EntityTypeUser,
+			Message:    constants.MsgFollow,
+		})
+	}
+	return nil
 }
 
 func (s *followService) RejectFollowRequest(ctx context.Context, currentUserID, followerUserID int) error {
 	if currentUserID == followerUserID {
 		return constants.ErrCannotFollowSelf
 	}
-	return s.followRepo.RejectFollowRequest(ctx, currentUserID, followerUserID)
+	if err := s.followRepo.RejectFollowRequest(ctx, currentUserID, followerUserID); err != nil {
+		return err
+	}
+	if s.notifSvc != nil {
+		_ = s.notifSvc.DeleteNotification(ctx, int64(followerUserID), notification.NotificationTypeFollowRequest, int64(followerUserID))
+	}
+	return nil
 }
 
 func (s *followService) GetFollowers(ctx context.Context, currentUserID, targetUserID, page, limit int, search string) (*FollowListResponse, error) {

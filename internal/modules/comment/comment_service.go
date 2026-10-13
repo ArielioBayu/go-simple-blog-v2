@@ -11,6 +11,7 @@ import (
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/configs"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/constants"
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/notification"
 	"github.com/ArielioBayu/go-simple-blog-v2/pkg/utils"
 )
 
@@ -36,13 +37,19 @@ type commentService struct {
 	cfg         *configs.Config
 	commentRepo CommentRepository
 	postChecker PostChecker
+	notifSvc    notification.NotificationService
 }
 
-func NewCommentService(cfg *configs.Config, commentRepo CommentRepository, postChecker PostChecker) CommentService {
+func NewCommentService(cfg *configs.Config, commentRepo CommentRepository, postChecker PostChecker, notifSvc ...notification.NotificationService) CommentService {
+	var svc notification.NotificationService
+	if len(notifSvc) > 0 {
+		svc = notifSvc[0]
+	}
 	return &commentService{
 		cfg:         cfg,
 		commentRepo: commentRepo,
 		postChecker: postChecker,
+		notifSvc:    svc,
 	}
 }
 
@@ -71,6 +78,21 @@ func (s *commentService) CreateComment(ctx context.Context, postId, userId int, 
 	err := s.commentRepo.CreateComment(ctx, model)
 	if err != nil {
 		return fmt.Errorf("service CreateComment: %w", err)
+	}
+
+	if s.notifSvc != nil {
+		authorID, err := s.commentRepo.GetPostAuthorID(ctx, postId)
+		if err == nil && authorID > 0 {
+			msg := constants.FormatCommentNotification(request.CommentContent)
+			_ = s.notifSvc.CreateNotification(ctx, notification.CreateNotificationInput{
+				UserID:     authorID,
+				ActorID:    int64(userId),
+				Type:       notification.NotificationTypeComment,
+				EntityID:   int64(postId),
+				EntityType: notification.EntityTypePost,
+				Message:    msg,
+			})
+		}
 	}
 
 	return nil
@@ -154,6 +176,30 @@ func (s *commentService) CreateReply(ctx context.Context, commentId, userId int,
 	err = s.commentRepo.CreateReply(ctx, model)
 	if err != nil {
 		return fmt.Errorf("service CreateReply: %w", err)
+	}
+
+	if s.notifSvc != nil {
+		info, err := s.commentRepo.GetCommentAuthInfo(ctx, commentId)
+		if err == nil && info != nil {
+			var recipientID int64
+			if request.ReplyToUserID != nil && *request.ReplyToUserID > 0 {
+				recipientID = *request.ReplyToUserID
+			} else {
+				recipientID = int64(info.CommentAuthorID)
+			}
+
+			if recipientID > 0 {
+				msg := constants.FormatReplyNotification(request.ReplyContent)
+				_ = s.notifSvc.CreateNotification(ctx, notification.CreateNotificationInput{
+					UserID:     recipientID,
+					ActorID:    int64(userId),
+					Type:       notification.NotificationTypeReply,
+					EntityID:   int64(commentId),
+					EntityType: notification.EntityTypeComment,
+					Message:    msg,
+				})
+			}
+		}
 	}
 
 	return nil

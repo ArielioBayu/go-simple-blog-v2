@@ -6,6 +6,7 @@ import (
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/auth"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/comment"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/follow"
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/notification"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/post"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/saves"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/upload"
@@ -14,26 +15,30 @@ import (
 )
 
 type Services struct {
-	Auth     auth.AuthService
-	User     user.UserService
-	Post     post.PostService
-	Comment  comment.CommentService
-	Activity activity.ActivityService
-	Upload   upload.UploadService
-	Saves    saves.SavesService
-	Follow   follow.FollowService
+	Auth         auth.AuthService
+	User         user.UserService
+	Post         post.PostService
+	Comment      comment.CommentService
+	Activity     activity.ActivityService
+	Upload       upload.UploadService
+	Saves        saves.SavesService
+	Follow       follow.FollowService
+	Notification notification.NotificationService
 }
 
 func InitServices(repos *repository.Repositories, cfg *configs.Config) *Services {
+	notifSvc := notification.NewNotificationService(cfg, repos.Notification)
+
 	return &Services{
-		Auth:     auth.NewAuthService(cfg, repos.Auth, repos.User),
-		User:     user.NewUserService(cfg, repos.User),
-		Post:     post.NewPostService(cfg, repos.Post, repos.Comment, repos.Activity, repos.Upload, repos.Follow),
-		Comment:  comment.NewCommentService(cfg, repos.Comment, repos.Post),
-		Activity: activity.NewActivityService(cfg, repos.Activity),
-		Upload:   upload.NewUploadService(cfg, repos.Upload),
-		Saves:    saves.NewSavesService(cfg, repos.Saves),
-		Follow:   follow.NewFollowService(cfg, repos.Follow),
+		Auth:         auth.NewAuthService(cfg, repos.Auth, repos.User),
+		User:         user.NewUserService(cfg, repos.User),
+		Post:         post.NewPostService(cfg, repos.Post, repos.Comment, repos.Activity, repos.Upload, repos.Follow),
+		Comment:      comment.NewCommentService(cfg, repos.Comment, repos.Post, notifSvc),
+		Activity:     activity.NewActivityService(cfg, repos.Activity, notifSvc),
+		Upload:       upload.NewUploadService(cfg, repos.Upload),
+		Saves:        saves.NewSavesService(cfg, repos.Saves),
+		Follow:       follow.NewFollowService(cfg, repos.Follow, notifSvc),
+		Notification: notifSvc,
 	}
 }
 

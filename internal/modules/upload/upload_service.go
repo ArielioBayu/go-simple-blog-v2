@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/configs"
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/constants"
 	"github.com/ArielioBayu/go-simple-blog-v2/pkg/utils"
 )
 
@@ -36,11 +37,11 @@ func NewUploadService(cfg *configs.Config, uploadRepo UploadRepository) UploadSe
 
 func (s *uploadService) UploadImage(ctx context.Context, userID int, fileHeader *multipart.FileHeader, scheme, host string) (*UploadResponse, error) {
 	if fileHeader == nil {
-		return nil, utils.ErrFileRequired
+		return nil, constants.ErrFileRequired
 	}
 
-	if fileHeader.Size > utils.MaxUploadSize {
-		return nil, utils.ErrFileTooLarge
+	if fileHeader.Size > constants.MaxUploadSize {
+		return nil, constants.ErrFileTooLarge
 	}
 
 	file, err := fileHeader.Open()
@@ -49,7 +50,6 @@ func (s *uploadService) UploadImage(ctx context.Context, userID int, fileHeader 
 	}
 	defer file.Close()
 
-	// Sniff 512 bytes pertama untuk menentukan MIME type secara akurat (security best practice)
 	buffer := make([]byte, 512)
 	n, err := file.Read(buffer)
 	if err != nil && err != io.EOF {
@@ -59,7 +59,7 @@ func (s *uploadService) UploadImage(ctx context.Context, userID int, fileHeader 
 	contentType := http.DetectContentType(buffer[:n])
 	expectedExt, isAllowed := utils.AllowedMIMETypes[contentType]
 	if !isAllowed {
-		return nil, utils.ErrInvalidFormat
+		return nil, constants.ErrInvalidFormat
 	}
 
 	// Kembalikan pointer pembaca ke awal file
@@ -67,7 +67,7 @@ func (s *uploadService) UploadImage(ctx context.Context, userID int, fileHeader 
 		return nil, fmt.Errorf("failed to seek file: %w", err)
 	}
 
-	if err := os.MkdirAll(utils.UploadDir, os.ModePerm); err != nil {
+	if err := os.MkdirAll(constants.UploadDir, os.ModePerm); err != nil {
 		return nil, fmt.Errorf("failed to create upload directory: %w", err)
 	}
 
@@ -82,7 +82,7 @@ func (s *uploadService) UploadImage(ctx context.Context, userID int, fileHeader 
 	randomHex := hex.EncodeToString(randomBytes)
 
 	uniqueFilename := fmt.Sprintf("%d-%s%s", time.Now().Unix(), randomHex, ext)
-	dstPath := filepath.Join(utils.UploadDir, uniqueFilename)
+	dstPath := filepath.Join(constants.UploadDir, uniqueFilename)
 
 	dst, err := os.Create(dstPath)
 	if err != nil {

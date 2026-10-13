@@ -15,6 +15,7 @@ var (
 	ErrPostNotFound         = errors.New("Error Post Not Found")
 	ErrCommentNotFound      = errors.New("comment not found")
 	ErrReplyNotFound        = errors.New("reply not found")
+	ErrNotificationNotFound = errors.New("notification not found")
 	ErrRefreshTokenNotFound = errors.New("refresh token not found")
 
 	//	Invalid Token & Verification
@@ -36,5 +37,10 @@ var (
 	ErrFollowNotFound         = errors.New("follow relationship not found")
 	ErrFollowRequestNotFound  = errors.New("follow request not found")
 	ErrPrivateAccount         = errors.New("this account is private. follow this account to see their posts")
+
+	// File Upload Errors
+	ErrFileRequired  = errors.New("file is required (key: 'file')")
+	ErrFileTooLarge  = errors.New("file size exceeds 5MB limit")
+	ErrInvalidFormat = errors.New("invalid file format. Allowed formats: jpg, jpeg, png, webp, gif")
 )
 

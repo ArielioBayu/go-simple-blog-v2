@@ -4,9 +4,9 @@ import (
 	"net/http"
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/configs"
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/constants"
 	"github.com/ArielioBayu/go-simple-blog-v2/pkg/apperror"
 	"github.com/ArielioBayu/go-simple-blog-v2/pkg/response"
-	"github.com/ArielioBayu/go-simple-blog-v2/pkg/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -32,7 +32,7 @@ func (h *UploadHandler) UploadFile(c *gin.Context) {
 	}
 
 	// Batasi ukuran request body ke 5MB + 1MB multipart overhead untuk proteksi DoS
-	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, utils.MaxUploadSize+1024*1024)
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, constants.MaxUploadSize+1024*1024)
 
 	file, err := c.FormFile("file")
 	if err != nil {

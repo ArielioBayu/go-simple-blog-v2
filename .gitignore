@@ -1,3 +1,5 @@
 db
 config.yaml
 docker-compose.yaml
+uploads
+docs

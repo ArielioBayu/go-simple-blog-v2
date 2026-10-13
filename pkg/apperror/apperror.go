@@ -6,7 +6,6 @@ import (
 	"net/http"
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/constants"
-	"github.com/ArielioBayu/go-simple-blog-v2/pkg/utils"
 	"github.com/go-playground/validator/v10"
 )
 
@@ -128,6 +127,8 @@ func FromError(err error) *AppError {
 		return NewNotFound("comment not found", err)
 	case errors.Is(err, constants.ErrReplyNotFound):
 		return NewNotFound("reply not found", err)
+	case errors.Is(err, constants.ErrNotificationNotFound):
+		return NewNotFound("notification not found", err)
 	case errors.Is(err, constants.ErrRefreshTokenNotFound):
 		return NewNotFound("refresh token not found", err)
 	case errors.Is(err, constants.ErrFollowNotFound):
@@ -170,7 +171,7 @@ func FromError(err error) *AppError {
 		return NewBadRequest("account is already verified", err)
 	case errors.Is(err, constants.ErrCannotFollowSelf):
 		return NewBadRequest("cannot follow yourself", err)
-	case errors.Is(err, utils.ErrFileRequired), errors.Is(err, utils.ErrFileTooLarge), errors.Is(err, utils.ErrInvalidFormat):
+	case errors.Is(err, constants.ErrFileRequired), errors.Is(err, constants.ErrFileTooLarge), errors.Is(err, constants.ErrInvalidFormat):
 		return NewBadRequest(err.Error(), err)
 
 	// Rate Limited (429)

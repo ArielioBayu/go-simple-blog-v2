@@ -8,7 +8,6 @@ import (
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/configs"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/constants"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/modules/follow"
-	"github.com/ArielioBayu/go-simple-blog-v2/pkg/utils"
 )
 
 type mockFollowRepo struct {
@@ -149,7 +148,7 @@ func TestFollowUser(t *testing.T) {
 	t.Run("Already following", func(t *testing.T) {
 		repo := &mockFollowRepo{
 			getFollowRecordFunc: func(ctx context.Context, followerID, followingID int) (*follow.FollowModel, error) {
-				return &follow.FollowModel{Status: utils.FollowStatusAccepted}, nil
+				return &follow.FollowModel{Status: constants.FollowStatusAccepted}, nil
 			},
 		}
 		svc := follow.NewFollowService(cfg, repo)
@@ -163,7 +162,7 @@ func TestFollowUser(t *testing.T) {
 	t.Run("Follow request already pending", func(t *testing.T) {
 		repo := &mockFollowRepo{
 			getFollowRecordFunc: func(ctx context.Context, followerID, followingID int) (*follow.FollowModel, error) {
-				return &follow.FollowModel{Status: utils.FollowStatusPending}, nil
+				return &follow.FollowModel{Status: constants.FollowStatusPending}, nil
 			},
 		}
 		svc := follow.NewFollowService(cfg, repo)
@@ -180,7 +179,7 @@ func TestFollowUser(t *testing.T) {
 				return false, nil
 			},
 			followUserFunc: func(ctx context.Context, followerID, followingID int, status string) error {
-				if status != utils.FollowStatusAccepted {
+				if status != constants.FollowStatusAccepted {
 					t.Fatalf("expected status accepted, got %s", status)
 				}
 				return nil
@@ -192,7 +191,7 @@ func TestFollowUser(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if res.Status != utils.FollowStatusAccepted || res.IsPending {
+		if res.Status != constants.FollowStatusAccepted || res.IsPending {
 			t.Fatalf("unexpected response: %+v", res)
 		}
 	})
@@ -203,7 +202,7 @@ func TestFollowUser(t *testing.T) {
 				return true, nil
 			},
 			followUserFunc: func(ctx context.Context, followerID, followingID int, status string) error {
-				if status != utils.FollowStatusPending {
+				if status != constants.FollowStatusPending {
 					t.Fatalf("expected status pending, got %s", status)
 				}
 				return nil
@@ -215,7 +214,7 @@ func TestFollowUser(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if res.Status != utils.FollowStatusPending || !res.IsPending {
+		if res.Status != constants.FollowStatusPending || !res.IsPending {
 			t.Fatalf("unexpected response: %+v", res)
 		}
 	})

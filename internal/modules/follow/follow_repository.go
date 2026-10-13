@@ -404,9 +404,9 @@ func (r *followRepository) GetRelationship(ctx context.Context, currentUserID, t
 		}, nil
 	}
 
-	isFollowing := myFollowStatus.Valid && myFollowStatus.String == utils.FollowStatusAccepted
-	isPending := myFollowStatus.Valid && myFollowStatus.String == utils.FollowStatusPending
-	isFollowedBy := theirFollowStatus.Valid && theirFollowStatus.String == utils.FollowStatusAccepted
+	isFollowing := myFollowStatus.Valid && myFollowStatus.String == constants.FollowStatusAccepted
+	isPending := myFollowStatus.Valid && myFollowStatus.String == constants.FollowStatusPending
+	isFollowedBy := theirFollowStatus.Valid && theirFollowStatus.String == constants.FollowStatusAccepted
 	canViewContent := !isPrivate || isFollowing
 
 	return &RelationshipResponse{

@@ -8,7 +8,6 @@ import (
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/constants"
 	"github.com/ArielioBayu/go-simple-blog-v2/pkg/apperror"
 	"github.com/ArielioBayu/go-simple-blog-v2/pkg/response"
-	"github.com/ArielioBayu/go-simple-blog-v2/pkg/utils"
 	"github.com/gin-gonic/gin"
 )
 
@@ -45,7 +44,7 @@ func (h *FollowHandler) FollowUser(c *gin.Context) {
 	}
 
 	msg := "successfully followed user"
-	if res.Status == utils.FollowStatusPending {
+	if res.Status == constants.FollowStatusPending {
 		msg = "follow request sent"
 	}
 
