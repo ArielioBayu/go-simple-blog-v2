@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/configs"
@@ -58,9 +57,6 @@ func (s *activityService) InsertUpdateActivities(ctx context.Context, postId, us
 
 	err = s.activityRepo.UpsertActivities(ctx, model)
 	if err != nil {
-		if strings.Contains(err.Error(), "fk_activities_post_id") || strings.Contains(err.Error(), "1452") {
-			return constants.ErrPostNotFound
-		}
 		return fmt.Errorf("service UpsertActivities: %w", err)
 	}
 

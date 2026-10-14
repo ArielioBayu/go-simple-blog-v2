@@ -30,7 +30,7 @@ func FormatCommentNotification(content string) string {
 	if len(runes) > 50 {
 		preview = string(runes[:47]) + "..."
 	}
-	return fmt.Sprintf("mengomentari postingan Anda: \"%s\"", preview)
+	return fmt.Sprintf("mengomentari postingan Anda: %s", preview)
 }
 
 func FormatReplyNotification(content string) string {

@@ -21,12 +21,15 @@ type UpdateReplyRequest struct {
 
 type CommentAuthInfo struct {
 	CommentID       int
+	PostID          int
 	CommentAuthorID int
 	PostAuthorID    int
 }
 
 type ReplyAuthInfo struct {
 	ReplyID       int
+	CommentID     int
+	PostID        int
 	ReplyAuthorID int
 	PostAuthorID  int
 }

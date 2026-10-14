@@ -161,6 +161,16 @@ func (s *commentService) CreateReply(ctx context.Context, commentId, userId int,
 		return constants.ErrCommentNotFound
 	}
 
+	if request.ReplyToUserID != nil && *request.ReplyToUserID > 0 {
+		userExists, err := s.commentRepo.CheckUserExists(ctx, *request.ReplyToUserID)
+		if err != nil {
+			return fmt.Errorf("service CreateReply check target user: %w", err)
+		}
+		if !userExists {
+			return constants.ErrUserNotFound
+		}
+	}
+
 	now := time.Now()
 	model := CommentReplyModel{
 		CommentID:     commentId,
@@ -276,7 +286,17 @@ func (s *commentService) DeleteComment(ctx context.Context, commentId, currentUs
 		return constants.ErrForbidden
 	}
 
-	return s.commentRepo.DeleteComment(ctx, commentId)
+	err = s.commentRepo.DeleteComment(ctx, commentId)
+	if err != nil {
+		return fmt.Errorf("service DeleteComment: %w", err)
+	}
+
+	if s.notifSvc != nil {
+		_ = s.notifSvc.DeleteNotification(ctx, int64(auth.CommentAuthorID), notification.NotificationTypeComment, int64(auth.PostID))
+		_ = s.notifSvc.DeleteNotificationsByEntity(ctx, notification.NotificationTypeReply, int64(commentId))
+	}
+
+	return nil
 }
 
 func (s *commentService) UpdateReply(ctx context.Context, replyId, currentUserId int, request UpdateReplyRequest) error {
@@ -312,6 +332,15 @@ func (s *commentService) DeleteReply(ctx context.Context, replyId, currentUserId
 		return constants.ErrForbidden
 	}
 
-	return s.commentRepo.DeleteReply(ctx, replyId)
+	err = s.commentRepo.DeleteReply(ctx, replyId)
+	if err != nil {
+		return fmt.Errorf("service DeleteReply: %w", err)
+	}
+
+	if s.notifSvc != nil {
+		_ = s.notifSvc.DeleteNotification(ctx, int64(auth.ReplyAuthorID), notification.NotificationTypeReply, int64(auth.CommentID))
+	}
+
+	return nil
 }
 

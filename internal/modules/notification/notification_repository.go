@@ -13,6 +13,7 @@ import (
 type NotificationRepository interface {
 	CreateNotification(ctx context.Context, input CreateNotificationInput) error
 	DeleteNotification(ctx context.Context, actorID int64, notifType NotificationType, entityID int64) error
+	DeleteNotificationsByEntity(ctx context.Context, notifType NotificationType, entityID int64) error
 	GetNotifications(ctx context.Context, userID int64, limit, offset int) ([]NotificationItemResponse, int, error)
 	CountUnread(ctx context.Context, userID int64) (int, error)
 	MarkAllAsRead(ctx context.Context, userID int64) error
@@ -46,10 +47,20 @@ func (r *notificationRepository) CreateNotification(ctx context.Context, input C
 }
 
 func (r *notificationRepository) DeleteNotification(ctx context.Context, actorID int64, notifType NotificationType, entityID int64) error {
-	query := `DELETE FROM notifications WHERE actor_id = ? AND type = ? AND entity_id = ?`
+	query := `DELETE FROM notifications WHERE actor_id = ? AND type = ? AND entity_id = ? ORDER BY id DESC LIMIT 1`
 	_, err := r.db.ExecContext(ctx, query, actorID, string(notifType), entityID)
 	if err != nil {
 		return fmt.Errorf("repository DeleteNotification: %w", err)
+	}
+
+	return nil
+}
+
+func (r *notificationRepository) DeleteNotificationsByEntity(ctx context.Context, notifType NotificationType, entityID int64) error {
+	query := `DELETE FROM notifications WHERE type = ? AND entity_id = ?`
+	_, err := r.db.ExecContext(ctx, query, string(notifType), entityID)
+	if err != nil {
+		return fmt.Errorf("repository DeleteNotificationsByEntity: %w", err)
 	}
 
 	return nil

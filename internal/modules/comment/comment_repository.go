@@ -31,6 +31,7 @@ type CommentRepository interface {
 	DeleteReply(ctx context.Context, replyId int) error
 
 	GetPostAuthorID(ctx context.Context, postId int) (int64, error)
+	CheckUserExists(ctx context.Context, userID int64) (bool, error)
 }
 
 type commentRepository struct {
@@ -385,12 +386,12 @@ func (r *commentRepository) CountCommentsByPostID(ctx context.Context, postId in
 }
 
 func (r *commentRepository) GetCommentAuthInfo(ctx context.Context, commentId int) (*CommentAuthInfo, error) {
-	query := `SELECT c.id, c.user_id, p.user_id 
+	query := `SELECT c.id, c.post_id, c.user_id, p.user_id 
 				FROM comments c 
 				JOIN posts p ON c.post_id = p.id 
 				WHERE c.id = ?`
 	var info CommentAuthInfo
-	err := r.db.QueryRowContext(ctx, query, commentId).Scan(&info.CommentID, &info.CommentAuthorID, &info.PostAuthorID)
+	err := r.db.QueryRowContext(ctx, query, commentId).Scan(&info.CommentID, &info.PostID, &info.CommentAuthorID, &info.PostAuthorID)
 	if err != nil {
 		return nil, err
 	}
@@ -416,13 +417,13 @@ func (r *commentRepository) DeleteComment(ctx context.Context, commentId int) er
 }
 
 func (r *commentRepository) GetReplyAuthInfo(ctx context.Context, replyId int) (*ReplyAuthInfo, error) {
-	query := `SELECT cr.id, cr.user_id, p.user_id 
+	query := `SELECT cr.id, cr.comment_id, c.post_id, cr.user_id, p.user_id 
 				FROM comment_replies cr 
 				JOIN comments c ON cr.comment_id = c.id 
 				JOIN posts p ON c.post_id = p.id 
 				WHERE cr.id = ?`
 	var info ReplyAuthInfo
-	err := r.db.QueryRowContext(ctx, query, replyId).Scan(&info.ReplyID, &info.ReplyAuthorID, &info.PostAuthorID)
+	err := r.db.QueryRowContext(ctx, query, replyId).Scan(&info.ReplyID, &info.CommentID, &info.PostID, &info.ReplyAuthorID, &info.PostAuthorID)
 	if err != nil {
 		return nil, err
 	}
@@ -446,3 +447,17 @@ func (r *commentRepository) DeleteReply(ctx context.Context, replyId int) error 
 	}
 	return nil
 }
+
+func (r *commentRepository) CheckUserExists(ctx context.Context, userID int64) (bool, error) {
+	query := `SELECT 1 FROM users WHERE id = ? LIMIT 1`
+	var exists int
+	err := r.db.QueryRowContext(ctx, query, userID).Scan(&exists)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, fmt.Errorf("repository CheckUserExists: %w", err)
+	}
+	return true, nil
+}
+

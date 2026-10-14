@@ -11,6 +11,7 @@ import (
 type NotificationService interface {
 	CreateNotification(ctx context.Context, input CreateNotificationInput) error
 	DeleteNotification(ctx context.Context, actorID int64, notifType NotificationType, entityID int64) error
+	DeleteNotificationsByEntity(ctx context.Context, notifType NotificationType, entityID int64) error
 	GetNotifications(ctx context.Context, userID int64, page, limit int) (*GetNotificationsResponse, error)
 	GetUnreadCount(ctx context.Context, userID int64) (*UnreadCountResponse, error)
 	MarkAllAsRead(ctx context.Context, userID int64) error
@@ -52,6 +53,18 @@ func (s *notificationService) DeleteNotification(ctx context.Context, actorID in
 
 	if err := s.repo.DeleteNotification(ctx, actorID, notifType, entityID); err != nil {
 		return fmt.Errorf("service DeleteNotification: %w", err)
+	}
+
+	return nil
+}
+
+func (s *notificationService) DeleteNotificationsByEntity(ctx context.Context, notifType NotificationType, entityID int64) error {
+	if notifType == "" || entityID <= 0 {
+		return nil
+	}
+
+	if err := s.repo.DeleteNotificationsByEntity(ctx, notifType, entityID); err != nil {
+		return fmt.Errorf("service DeleteNotificationsByEntity: %w", err)
 	}
 
 	return nil
