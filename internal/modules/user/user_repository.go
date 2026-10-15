@@ -11,6 +11,9 @@ type UserRepository interface {
 	GetUser(ctx context.Context, email, username string) (*UserModel, error)
 	GetUserById(ctx context.Context, id int) (*UserModel, error)
 	GetUserByEmail(ctx context.Context, email string) (*UserModel, error)
+	GetUserByEmailOrUsername(ctx context.Context, identifier string) (*UserModel, error)
+	GetUserByGoogleID(ctx context.Context, googleID string) (*UserModel, error)
+	LinkGoogleAccount(ctx context.Context, userID int64, googleID string) error
 	CreateUser(ctx context.Context, model *UserModel) error
 	GetProfile(ctx context.Context, id int) (*ProfileResponse, error)
 	UpdateProfile(ctx context.Context, id int, req UpdateProfileRequest) (*ProfileResponse, error)
@@ -29,11 +32,12 @@ func NewUserRepository(db *sql.DB) UserRepository {
 }
 
 func (r *userRepository) GetUser(ctx context.Context, email, username string) (*UserModel, error) {
-	query := `SELECT id, email, username, COALESCE(bio, ''), COALESCE(avatar_url, ''), COALESCE(banner_url, ''), is_verified, is_private, created_at, updated_at, created_by, updated_by FROM users 
+	query := `SELECT id, email, username, COALESCE(bio, ''), COALESCE(avatar_url, ''), COALESCE(banner_url, ''), is_verified, is_private, google_id, created_at, updated_at, created_by, updated_by FROM users 
 			WHERE email = ? OR username = ?`
 	row := r.db.QueryRowContext(ctx, query, email, username)
 
 	var response UserModel
+	var gID sql.NullString
 	err := row.Scan(
 		&response.ID,
 		&response.Email,
@@ -43,6 +47,7 @@ func (r *userRepository) GetUser(ctx context.Context, email, username string) (*
 		&response.BannerURL,
 		&response.IsVerified,
 		&response.IsPrivate,
+		&gID,
 		&response.CreatedAt,
 		&response.UpdatedAt,
 		&response.CreatedBy,
@@ -56,15 +61,20 @@ func (r *userRepository) GetUser(ctx context.Context, email, username string) (*
 		return nil, fmt.Errorf("repository get user: %w", err)
 	}
 
+	if gID.Valid {
+		response.GoogleID = &gID.String
+	}
+
 	return &response, nil
 }
 
 func (r *userRepository) GetUserById(ctx context.Context, id int) (*UserModel, error) {
-	query := `SELECT id, email, username, COALESCE(bio, ''), COALESCE(avatar_url, ''), COALESCE(banner_url, ''), is_verified, is_private, created_at, updated_at, created_by, updated_by FROM users
+	query := `SELECT id, email, username, COALESCE(bio, ''), COALESCE(avatar_url, ''), COALESCE(banner_url, ''), is_verified, is_private, google_id, created_at, updated_at, created_by, updated_by FROM users
 				WHERE id = ?`
 	row := r.db.QueryRowContext(ctx, query, id)
 
 	var response UserModel
+	var gID sql.NullString
 	err := row.Scan(
 		&response.ID,
 		&response.Email,
@@ -74,6 +84,7 @@ func (r *userRepository) GetUserById(ctx context.Context, id int) (*UserModel, e
 		&response.BannerURL,
 		&response.IsVerified,
 		&response.IsPrivate,
+		&gID,
 		&response.CreatedAt,
 		&response.UpdatedAt,
 		&response.CreatedBy,
@@ -86,15 +97,20 @@ func (r *userRepository) GetUserById(ctx context.Context, id int) (*UserModel, e
 		return nil, fmt.Errorf("repository get user by id: %w", err)
 	}
 
+	if gID.Valid {
+		response.GoogleID = &gID.String
+	}
+
 	return &response, nil
 }
 
 func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*UserModel, error) {
-	query := `SELECT id, email, password, username, COALESCE(bio, ''), COALESCE(avatar_url, ''), COALESCE(banner_url, ''), is_verified, is_private, created_at, updated_at, created_by, updated_by 
+	query := `SELECT id, email, COALESCE(password, ''), username, COALESCE(bio, ''), COALESCE(avatar_url, ''), COALESCE(banner_url, ''), is_verified, is_private, google_id, created_at, updated_at, created_by, updated_by 
 				FROM users WHERE email = ?`
 	row := r.db.QueryRowContext(ctx, query, email)
 
 	var response UserModel
+	var gID sql.NullString
 	err := row.Scan(
 		&response.ID,
 		&response.Email,
@@ -105,6 +121,7 @@ func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*Use
 		&response.BannerURL,
 		&response.IsVerified,
 		&response.IsPrivate,
+		&gID,
 		&response.CreatedAt,
 		&response.UpdatedAt,
 		&response.CreatedBy,
@@ -116,13 +133,110 @@ func (r *userRepository) GetUserByEmail(ctx context.Context, email string) (*Use
 		}
 		return nil, fmt.Errorf("repository get user by email: %w", err)
 	}
+
+	if gID.Valid {
+		response.GoogleID = &gID.String
+	}
+
 	return &response, nil
 }
 
+func (r *userRepository) GetUserByEmailOrUsername(ctx context.Context, identifier string) (*UserModel, error) {
+	query := `SELECT id, email, COALESCE(password, ''), username, COALESCE(bio, ''), COALESCE(avatar_url, ''), COALESCE(banner_url, ''), is_verified, is_private, google_id, created_at, updated_at, created_by, updated_by 
+				FROM users 
+				WHERE email = ? OR username = ? 
+				LIMIT 1`
+	row := r.db.QueryRowContext(ctx, query, identifier, identifier)
+
+	var response UserModel
+	var gID sql.NullString
+	err := row.Scan(
+		&response.ID,
+		&response.Email,
+		&response.Password,
+		&response.Username,
+		&response.Bio,
+		&response.AvatarURL,
+		&response.BannerURL,
+		&response.IsVerified,
+		&response.IsPrivate,
+		&gID,
+		&response.CreatedAt,
+		&response.UpdatedAt,
+		&response.CreatedBy,
+		&response.UpdatedBy,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("repository get user by email or username: %w", err)
+	}
+
+	if gID.Valid {
+		response.GoogleID = &gID.String
+	}
+
+	return &response, nil
+}
+
+func (r *userRepository) GetUserByGoogleID(ctx context.Context, googleID string) (*UserModel, error) {
+	query := `SELECT id, email, COALESCE(password, ''), username, COALESCE(bio, ''), COALESCE(avatar_url, ''), COALESCE(banner_url, ''), is_verified, is_private, google_id, created_at, updated_at, created_by, updated_by 
+				FROM users 
+				WHERE google_id = ? 
+				LIMIT 1`
+	row := r.db.QueryRowContext(ctx, query, googleID)
+
+	var response UserModel
+	var gID sql.NullString
+	err := row.Scan(
+		&response.ID,
+		&response.Email,
+		&response.Password,
+		&response.Username,
+		&response.Bio,
+		&response.AvatarURL,
+		&response.BannerURL,
+		&response.IsVerified,
+		&response.IsPrivate,
+		&gID,
+		&response.CreatedAt,
+		&response.UpdatedAt,
+		&response.CreatedBy,
+		&response.UpdatedBy,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("repository get user by google id: %w", err)
+	}
+
+	if gID.Valid {
+		response.GoogleID = &gID.String
+	}
+
+	return &response, nil
+}
+
+func (r *userRepository) LinkGoogleAccount(ctx context.Context, userID int64, googleID string) error {
+	query := `UPDATE users SET google_id = ?, is_verified = TRUE, updated_at = NOW() WHERE id = ?`
+	_, err := r.db.ExecContext(ctx, query, googleID, userID)
+	if err != nil {
+		return fmt.Errorf("repository LinkGoogleAccount: %w", err)
+	}
+	return nil
+}
+
 func (r *userRepository) CreateUser(ctx context.Context, model *UserModel) error {
-	query := `INSERT INTO users (email, password, username, bio, avatar_url, banner_url, is_verified, is_private, created_at, updated_at, created_by, updated_by)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-	res, err := r.db.ExecContext(ctx, query, model.Email, model.Password, model.Username, model.Bio, model.AvatarURL, model.BannerURL, model.IsVerified, model.IsPrivate,
+	var passwordVal interface{} = model.Password
+	if model.Password == "" {
+		passwordVal = nil
+	}
+
+	query := `INSERT INTO users (email, password, username, bio, avatar_url, banner_url, is_verified, is_private, google_id, created_at, updated_at, created_by, updated_by)
+	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	res, err := r.db.ExecContext(ctx, query, model.Email, passwordVal, model.Username, model.Bio, model.AvatarURL, model.BannerURL, model.IsVerified, model.IsPrivate, model.GoogleID,
 		model.CreatedAt, model.UpdatedAt, model.CreatedBy, model.UpdatedBy)
 	if err != nil {
 		return fmt.Errorf("repository create user: %w", err)
@@ -236,13 +350,18 @@ func (r *userRepository) CheckUsernameExistsExcludeSelf(ctx context.Context, id 
 
 func (r *userRepository) UpdateProfile(ctx context.Context, id int, req UpdateProfileRequest) (*ProfileResponse, error) {
 	query := `UPDATE users 
-	          SET username = COALESCE(NULLIF(?, ''), username),
-	              bio = CASE WHEN ? != '' THEN ? ELSE bio END, 
-	              avatar_url = CASE WHEN ? != '' THEN ? ELSE avatar_url END, 
-	              banner_url = CASE WHEN ? != '' THEN ? ELSE banner_url END, 
+	          SET username = CASE WHEN ? IS NOT NULL THEN COALESCE(NULLIF(?, ''), username) ELSE username END,
+	              bio = CASE WHEN ? IS NOT NULL THEN ? ELSE bio END, 
+	              avatar_url = CASE WHEN ? IS NOT NULL THEN ? ELSE avatar_url END, 
+	              banner_url = CASE WHEN ? IS NOT NULL THEN ? ELSE banner_url END, 
 	              updated_at = NOW() 
 	          WHERE id = ?`
-	_, err := r.db.ExecContext(ctx, query, req.Username, req.Bio, req.Bio, req.AvatarURL, req.AvatarURL, req.BannerURL, req.BannerURL, id)
+	_, err := r.db.ExecContext(ctx, query,
+		req.Username, req.Username,
+		req.Bio, req.Bio,
+		req.AvatarURL, req.AvatarURL,
+		req.BannerURL, req.BannerURL,
+		id)
 	if err != nil {
 		return nil, fmt.Errorf("repository UpdateProfile: %w", err)
 	}

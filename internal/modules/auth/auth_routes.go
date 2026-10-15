@@ -16,4 +16,8 @@ func AuthRoutes(r *gin.RouterGroup, h *AuthHandler) {
 	// rate limiter
 	group.POST("/sign-up", middleware.OTPRateLimiter(), h.SignUp)
 	group.POST("/resend-otp", middleware.OTPRateLimiter(), h.ResendOTP)
+
+	// Google OAuth 2.0
+	group.GET("/google/login", h.GoogleLogin)
+	group.GET("/google/callback", h.GoogleCallback)
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/configs"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/constants"
+	"github.com/ArielioBayu/go-simple-blog-v2/pkg/utils"
 )
 
 type UserService interface {
@@ -43,23 +44,45 @@ func (s *userService) GetProfileByID(ctx context.Context, id int) (*ProfileRespo
 }
 
 func (s *userService) UpdateProfile(ctx context.Context, id int, req UpdateProfileRequest) (*ProfileResponse, error) {
-	req.Username = strings.TrimSpace(req.Username)
-	req.Bio = strings.TrimSpace(req.Bio)
-	req.AvatarURL = strings.TrimSpace(req.AvatarURL)
-	req.BannerURL = strings.TrimSpace(req.BannerURL)
-
 	// Jika tidak ada field yang dikirim untuk diupdate, return profile saat ini tanpa query UPDATE
-	if req.Username == "" && req.Bio == "" && req.AvatarURL == "" && req.BannerURL == "" {
+	if req.Username == nil && req.Bio == nil && req.AvatarURL == nil && req.BannerURL == nil {
 		return s.userRepo.GetProfile(ctx, id)
 	}
 
-	if req.Username != "" {
-		isTaken, err := s.userRepo.CheckUsernameExistsExcludeSelf(ctx, id, req.Username)
-		if err != nil {
-			return nil, err
+	if req.Username != nil {
+		trimmed := strings.TrimSpace(*req.Username)
+		req.Username = &trimmed
+		if *req.Username != "" {
+			isTaken, err := s.userRepo.CheckUsernameExistsExcludeSelf(ctx, id, *req.Username)
+			if err != nil {
+				return nil, err
+			}
+			if isTaken {
+				return nil, constants.ErrUsernameOrEmailAlreadyExists
+			}
 		}
-		if isTaken {
-			return nil, constants.ErrUsernameOrEmailAlreadyExists
+	}
+
+	if req.Bio != nil {
+		trimmed := strings.TrimSpace(*req.Bio)
+		req.Bio = &trimmed
+	}
+
+	if req.AvatarURL != nil {
+		trimmed := strings.TrimSpace(*req.AvatarURL)
+		req.AvatarURL = &trimmed
+	}
+
+	if req.BannerURL != nil {
+		trimmed := strings.TrimSpace(*req.BannerURL)
+		req.BannerURL = &trimmed
+
+		// Jika user menghapus banner (string kosong), bersihkan juga file fisik lama di disk jika merupakan upload lokal
+		if *req.BannerURL == "" {
+			currentProfile, _ := s.userRepo.GetProfile(ctx, id)
+			if currentProfile != nil && currentProfile.BannerURL != "" && strings.HasPrefix(currentProfile.BannerURL, "uploads/") {
+				_ = utils.RemoveUploadFile(currentProfile.BannerURL)
+			}
 		}
 	}
 

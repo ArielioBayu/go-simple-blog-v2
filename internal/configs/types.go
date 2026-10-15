@@ -10,6 +10,7 @@ type (
 		Service  Service  `mapstructure:"service"`
 		Database Database `mapstructure:"database"`
 		SMTP     SMTP     `mapstructure:"smtp"`
+		OAuth    OAuth    `mapstructure:"oauth"`
 	}
 	Service struct {
 		SecretKey   string `mapstructure:"secret_key"`
@@ -35,6 +36,16 @@ type (
 		SMTPSenderName  string `mapstructure:"smtp_sender_name"`
 		SMTPSenderEmail string `mapstructure:"smtp_sender_email"`
 		SMTPPassword    string `mapstructure:"smtp_password"`
+	}
+
+	OAuth struct {
+		Google GoogleOAuth `mapstructure:"google"`
+	}
+
+	GoogleOAuth struct {
+		ClientID     string `mapstructure:"client_id"`
+		ClientSecret string `mapstructure:"client_secret"`
+		RedirectURL  string `mapstructure:"redirect_url"`
 	}
 )
 

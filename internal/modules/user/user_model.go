@@ -12,6 +12,7 @@ type UserModel struct {
 	BannerURL  string    `column:"banner_url"`
 	IsVerified bool      `column:"is_verified"`
 	IsPrivate  bool      `column:"is_private"`
+	GoogleID   *string   `column:"google_id"`
 	Password   string    `column:"password"`
 	CreatedAt  time.Time `column:"created_at"`
 	UpdatedAt  time.Time `column:"updated_at"`
@@ -54,10 +55,10 @@ type ProfileResponse struct {
 }
 
 type UpdateProfileRequest struct {
-	Username  string `json:"username"`
-	Bio       string `json:"bio"`
-	AvatarURL string `json:"avatar_url"`
-	BannerURL string `json:"banner_url"`
+	Username  *string `json:"username"`
+	Bio       *string `json:"bio"`
+	AvatarURL *string `json:"avatar_url"`
+	BannerURL *string `json:"banner_url"`
 }
 
 type UpdatePrivacyRequest struct {

@@ -1,0 +1,3 @@
+ALTER TABLE users 
+DROP COLUMN google_id,
+MODIFY COLUMN password VARCHAR(200) NOT NULL;

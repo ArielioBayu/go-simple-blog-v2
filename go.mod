@@ -1,6 +1,6 @@
 module github.com/ArielioBayu/go-simple-blog-v2
 
-go 1.24.0
+go 1.26.0
 
 require (
 	github.com/gin-gonic/gin v1.11.0
@@ -10,9 +10,11 @@ require (
 	github.com/golang-migrate/migrate/v4 v4.19.1
 	github.com/spf13/viper v1.21.0
 	golang.org/x/crypto v0.45.0
+	golang.org/x/oauth2 v0.37.0
 )
 
 require (
+	cloud.google.com/go/compute/metadata v0.8.0 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/bytedance/sonic v1.14.0 // indirect
 	github.com/bytedance/sonic/loader v0.3.0 // indirect
