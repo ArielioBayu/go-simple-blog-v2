@@ -361,13 +361,11 @@ func (s *authService) HandleGoogleCallback(ctx context.Context, code string) (st
 		return "", "", errors.New("google account did not provide a valid email")
 	}
 
-	// 1. Check if user already exists by Google ID
 	u, err := s.userRepo.GetUserByGoogleID(ctx, googleID)
 	if err != nil {
 		return "", "", fmt.Errorf("service get user by google id: %w", err)
 	}
 
-	// 2. If not found by Google ID, check if user exists by Email (Account Linking)
 	if u == nil {
 		u, err = s.userRepo.GetUserByEmail(ctx, userEmail)
 		if err != nil {
@@ -375,7 +373,6 @@ func (s *authService) HandleGoogleCallback(ctx context.Context, code string) (st
 		}
 
 		if u != nil {
-			// Link existing account with Google ID and ensure verified
 			if err := s.userRepo.LinkGoogleAccount(ctx, u.ID, googleID); err != nil {
 				return "", "", fmt.Errorf("service link google account: %w", err)
 			}
@@ -481,4 +478,3 @@ func (s *authService) generateUniqueUsername(ctx context.Context, email, name st
 
 	return fmt.Sprintf("%s%d", cleaned.String(), time.Now().Unix()%10000)
 }
-

@@ -1,6 +1,10 @@
 package configs
 
-import "github.com/spf13/viper"
+import (
+	"strings"
+
+	"github.com/spf13/viper"
+)
 
 var config *Config
 
@@ -29,6 +33,7 @@ func Init(opts ...Opsi) error {
 
 	viper.SetConfigName(opt.configFile)
 	viper.SetConfigType(opt.configType)
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	viper.AutomaticEnv()
 
 	//	untuk unmarshal file yaml kedalam variabel cfg
