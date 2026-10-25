@@ -27,3 +27,11 @@ oauth:
     client_secret: "your_google_client_secret"
     redirect_url: "http://localhost:9888/api/v1/auth/google/callback"
 
+r2:
+  account_id: "your_cloudflare_account_id"
+  access_key_id: "your_r2_access_key_id"
+  secret_access_key: "your_r2_secret_access_key"
+  bucket_name: "your_r2_bucket_name"
+  public_url: "https://pub-your_hash.r2.dev" # atau https://cdn.yourdomain.com
+
+

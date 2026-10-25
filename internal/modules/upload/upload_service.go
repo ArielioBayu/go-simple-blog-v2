@@ -15,6 +15,7 @@ import (
 
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/configs"
 	"github.com/ArielioBayu/go-simple-blog-v2/internal/constants"
+	"github.com/ArielioBayu/go-simple-blog-v2/internal/storage"
 	"github.com/ArielioBayu/go-simple-blog-v2/pkg/utils"
 )
 
@@ -26,12 +27,14 @@ type UploadService interface {
 type uploadService struct {
 	cfg        *configs.Config
 	uploadRepo UploadRepository
+	r2Storage  storage.R2Storage
 }
 
-func NewUploadService(cfg *configs.Config, uploadRepo UploadRepository) UploadService {
+func NewUploadService(cfg *configs.Config, uploadRepo UploadRepository, r2Storage storage.R2Storage) UploadService {
 	return &uploadService{
 		cfg:        cfg,
 		uploadRepo: uploadRepo,
+		r2Storage:  r2Storage,
 	}
 }
 
@@ -67,10 +70,6 @@ func (s *uploadService) UploadImage(ctx context.Context, userID int, fileHeader 
 		return nil, fmt.Errorf("failed to seek file: %w", err)
 	}
 
-	if err := os.MkdirAll(constants.UploadDir, os.ModePerm); err != nil {
-		return nil, fmt.Errorf("failed to create upload directory: %w", err)
-	}
-
 	clientExt := strings.ToLower(filepath.Ext(fileHeader.Filename))
 	ext := expectedExt
 	if clientExt == ".jpeg" && expectedExt == ".jpg" {
@@ -82,33 +81,49 @@ func (s *uploadService) UploadImage(ctx context.Context, userID int, fileHeader 
 	randomHex := hex.EncodeToString(randomBytes)
 
 	uniqueFilename := fmt.Sprintf("%d-%s%s", time.Now().Unix(), randomHex, ext)
-	dstPath := filepath.Join(constants.UploadDir, uniqueFilename)
 
-	dst, err := os.Create(dstPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create destination file: %w", err)
+	var savedFilePath string
+
+	if s.r2Storage != nil {
+		fileURL, err := s.r2Storage.Upload(ctx, uniqueFilename, file, fileHeader.Size, contentType)
+		if err != nil {
+			return nil, fmt.Errorf("failed to upload image to cloudflare r2: %w", err)
+		}
+		savedFilePath = fileURL
+	} else {
+		if err := os.MkdirAll(constants.UploadDir, os.ModePerm); err != nil {
+			return nil, fmt.Errorf("failed to create upload directory: %w", err)
+		}
+
+		dstPath := filepath.Join(constants.UploadDir, uniqueFilename)
+		dst, err := os.Create(dstPath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create destination file: %w", err)
+		}
+		defer dst.Close()
+
+		if _, err := io.Copy(dst, file); err != nil {
+			return nil, fmt.Errorf("failed to save file: %w", err)
+		}
+
+		savedFilePath = filepath.ToSlash(dstPath)
 	}
-	defer dst.Close()
-
-	if _, err := io.Copy(dst, file); err != nil {
-		return nil, fmt.Errorf("failed to save file: %w", err)
-	}
-
-	// Normalisasi path ke forward slash untuk kompatibilitas web (cross-platform)
-	normalizedPath := filepath.ToSlash(dstPath)
 
 	// Simpan metadata ke tabel uploads melalui repository
 	model := UploadModel{
 		UserID:         int64(userID),
 		FileName:       fileHeader.Filename,
 		SystemFilename: uniqueFilename,
-		FilePath:       normalizedPath,
+		FilePath:       savedFilePath,
 		FileType:       contentType,
 		FileSize:       fileHeader.Size,
 		CreatedAt:      time.Now(),
 	}
 
 	if err := s.uploadRepo.CreateUpload(ctx, &model); err != nil {
+		if s.r2Storage != nil {
+			_ = s.r2Storage.Delete(ctx, uniqueFilename)
+		}
 		return nil, fmt.Errorf("failed to record upload metadata: %w", err)
 	}
 
